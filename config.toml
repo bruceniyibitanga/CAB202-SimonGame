@@ -1,0 +1,134 @@
+# CAB202 Assessment 2 - Autograder Configuration File
+# Use this file to select tests to run and customise their outputs
+
+# If this file is not provided in a submission, all tests will be
+# enabled with pre-defined output preferences.
+
+# ---- Test selection ------------------------------------------------ #
+
+[tests]
+
+# Use a Boolean value to enable or disable a test
+# Commenting/removing one of these lines is equivalent to disabling the corresponding test
+
+# Section A
+gameplay = true
+pushbutton-hold = true
+pushbutton-debouncing = true
+
+# Section B
+sequencing = false
+
+# Section C
+playback-delay = false
+
+# Section D
+playback-frequency = false
+
+# Section E
+uart-gameplay = false
+uart-octave = false
+seed = false
+reset = false
+high-score = false
+mixed-input = false
+
+# ---- Per-test output preferences ----------------------------------- #
+
+[options]
+
+# Use these settings to customise the output of each test on Gradescope.
+# Options for disabled tests will be ignored.
+
+# Available keys:
+# - inputs:
+#   - gameplay: displays pushbutton/UART inputs corresponding to the Simon game (S1, S2, S3, or S4)
+#   - uart: displays all UART inputs
+
+# - outputs:
+#   - buzzer: displays parsed buzzer outputs
+#   - display: displays parsed display outputs
+
+# - events:
+#   - individual-steps: displays individual steps in each event
+#   - when-failed: displays when the program fails to match the expected sequence
+#   - error-percentage: displays the error in buzzer and display output timings/frequencies
+
+# - emulator-output: displays raw emulator output (may be very large)
+
+# Section A
+[options.gameplay]
+inputs = { gameplay = true, uart = true }
+outputs = { buzzer = true, display = true }
+events = { individual-steps = true, when-failed = false, error-percentage = false }
+emulator-output = false
+
+[options.pushbutton-hold]
+inputs = { gameplay = true, uart = false }
+outputs = { buzzer = true, display = true }
+events = { individual-steps = true, when-failed = false, error-percentage = false }
+emulator-output = false
+
+[options.pushbutton-debouncing]
+inputs = { gameplay = true, uart = false }
+outputs = { buzzer = true, display = true }
+events = { individual-steps = true, when-failed = false, error-percentage = false }
+emulator-output = false
+
+# Section B
+[options.sequencing]
+inputs = { gameplay = true, uart = false }
+outputs = { buzzer = true, display = true }
+emulator-output = false
+events = { individual-steps = false, when-failed = true, error-percentage = false }
+
+# Section C
+[options.playback-delay]
+inputs = { gameplay = true, uart = false }
+outputs = { buzzer = true, display = true }
+emulator-output = false
+events = { individual-steps = true, when-failed = false, error-percentage = true }
+
+# Section D
+[options.playback-frequency]
+inputs = { gameplay = true, uart = false }
+outputs = { buzzer = true, display = true }
+emulator-output = false
+events = { individual-steps = true, when-failed = false, error-percentage = true }
+
+# Section E
+[options.uart-gameplay]
+inputs = { gameplay = true, uart = true }
+outputs = { buzzer = true, display = true }
+emulator-output = false
+events = { individual-steps = true, when-failed = false, error-percentage = false }
+
+[options.uart-octave]
+inputs = { gameplay = true, uart = true }
+outputs = { buzzer = true, display = true }
+events = { individual-steps = true, when-failed = false, error-percentage = true }
+emulator-output = false
+
+[options.seed]
+inputs = { gameplay = true, uart = true }
+outputs = { buzzer = true, display = true }
+events = { individual-steps = true, when-failed = false, error-percentage = false }
+emulator-output = false
+
+[options.reset]
+inputs = { gameplay = true, uart = true }
+outputs = { buzzer = true, display = true }
+events = { individual-steps = true, when-failed = false, error-percentage = false }
+emulator-output = false
+
+[options.high-score]
+inputs = { gameplay = true, uart = true }
+outputs = { buzzer = true, display = true }
+events = { individual-steps = true, when-failed = false, error-percentage = false }
+emulator-output = false
+
+[options.mixed-input]
+inputs = { gameplay = true, uart = true }
+outputs = { buzzer = true, display = true }
+events = { individual-steps = true, when-failed = false, error-percentage = false }
+emulator-output = false
