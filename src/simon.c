@@ -13,7 +13,15 @@ static uint8_t score = 0;
 
 // Helper: Generate a random step (0-3)
 static uint8_t random_step(void) {
+    // Simple way to generate pseudo-random numbers
+    static uint8_t lfsr = 0x01;  // Linear feedback shift register
     
+    // Implement LFSR with taps at bits 7,5,4,3
+    uint8_t bit = ((lfsr >> 7) ^ (lfsr >> 5) ^ (lfsr >> 4) ^ (lfsr >> 3)) & 1;
+    lfsr = (lfsr << 1) | bit;
+    
+    // Return value 0-3
+    return lfsr & 0x03;
 }
 
 // Helper: Play back the sequence

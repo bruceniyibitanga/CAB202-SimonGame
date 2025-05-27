@@ -13,7 +13,11 @@ void display_show_pattern(uint8_t pattern);
 // Clear the display
 void display_clear(void);
 
+// Update the display buffer
 void update_display(const uint8_t left, const uint8_t right);
+
+// Toggle between displaying left and right digit (used by timer ISR)
+void display_toggle(void);
 
 extern volatile uint8_t left_byte;
 

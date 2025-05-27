@@ -1,6 +1,7 @@
 #include "uart.h"
 #include <stdint.h>
 #include <avr/interrupt.h>
+#include <stdlib.h> // WILL NEED TO REMOVE
 
 void uart_init(void) {
 
