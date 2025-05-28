@@ -5,17 +5,17 @@
 
 volatile bool tcb0_done = false;
 
-void delay_timer_init(void) {
-    // Configure TCB0 for periodic interrupt mode
-    TCB0.CTRLB = TCB_CNTMODE_INT_gc;
+// void delay_timer_init(void) {
+//     // Configure TCB0 for periodic interrupt mode
+//     TCB0.CTRLB = TCB_CNTMODE_INT_gc;
     
-    // Use CLK_PER with DIV2 prescaler (3.333MHz / 2 = 1.6665 MHz)
-    // This gives us better resolution for timing
-    TCB0.CTRLA = TCB_CLKSEL_DIV2_gc; // Use DIV2 prescaler
+//     // Use CLK_PER with DIV2 prescaler (3.333MHz / 2 = 1.6665 MHz)
+//     // This gives us better resolution for timing
+//     TCB0.CTRLA = TCB_CLKSEL_DIV2_gc; // Use DIV2 prescaler
     
-    // Enable CAPT interrupt
-    TCB0.INTCTRL = TCB_CAPT_bm;
-}
+//     // Enable CAPT interrupt
+//     TCB0.INTCTRL = TCB_CAPT_bm;
+// }
 
 void delay_ms_timer(uint16_t ms) {
     if (ms == 0) return;
@@ -51,10 +51,4 @@ void delay_ms_timer(uint16_t ms) {
         
         total_ticks -= ticks_this_cycle;
     }
-}
-
-ISR(TCB0_INT_vect) {
-    TCB0.INTFLAGS = TCB_CAPT_bm;     // Clear interrupt flag
-    TCB0.CTRLA &= ~TCB_ENABLE_bm;    // Stop timer
-    tcb0_done = true;
 }

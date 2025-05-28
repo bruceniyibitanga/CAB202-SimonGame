@@ -1,19 +1,34 @@
-#include <avr/interrupt.h>
-#include "stdio.h"
-#include "stdint.h"
+#include <stdint.h>
 
+#include <avr/io.h>
+#include <avr/interrupt.h>
+
+#include "buzzer.h"
 #include "initialisation.h"
-#include "timer_delay.h"
-#include "simon.h"
-#include "button.h"
-#include "pwm.h"
-#include "adc.h"
-#include "uart.h"
-#include "display.h"
 #include "timer.h"
-#include "button_macros.h"
+#include "uart.h"
+#include "button.h"
 
 void state_machine(void);
+
+// Define states for the Simon game
+typedef enum {
+    SIMON_GENERATE,
+    SIMON_PLAY_ON,
+    SIMON_PLAY_OFF,
+    AWAITING_INPUT,
+    HANDLE_INPUT,
+    EVALUATE_INPUT,
+    SUCCESS,
+    FAIL,
+    DISP_SCORE
+} SimonState;
+
+typedef enum{
+    PAUSED,
+    PLAYING
+} ToneState;
+
 
 int main(void)
 {
@@ -34,56 +49,101 @@ int main(void)
 
 void state_machine(void)
 {
+    ToneState TONE_STATE = PAUSED;
 
-    // Base frequency for each button
-   /*  const uint16_t frequencies[] = {262, 330, 392, 440}; // C4, E4, G4, A4
+    // Pushbutton states
+    uint8_t pb_state_prev = 0xFF;
+    uint8_t pb_state_curr = 0xFF;
 
-    const uint8_t button_pins[] = {
-        (1 << 4),  // S1 - PA4
-        (1 << 5),  // S2 - PA5
-        (1 << 6),  // S3 - PA6
-        (1 << 7)   // S4 - PA7
-    }; */
+    uint8_t pb_current = 0;
+
+    // Pushbutton flags
+    uint8_t pb_falling_edge, pb_rising_edge, pb_released = 0;
 
     while (1)
     {
-        /* for(uint8_t i = 0; i < 4; i++) {
-            if(detect_button_pressed(button_pins[i])) {
-                
-                char msg[50];
-                sprintf(msg, "Button S%d pressed\r\n", i+1);
-                uart_puts(msg);
-                
-                // Play the corresponding tone
-                pwm_set_frequency(frequencies[i]);
-                pwm_set_duty(50);  // 50% duty cycle
+        // Save state from previous iteration
+        pb_state_prev = pb_state_curr;
+        // Read current state
+        pb_state_curr = pb_debounced_state;
 
-                // Get playback delay (if you have this function)
-                // Otherwise use a fixed delay
-                float delay = 0.5f; // 500ms default, replace with get_playback_delay() if available
-                uint16_t half_delay_ms = (uint16_t)((delay * 1000.0f) / 2.0f);
-                
-                // Tone active for half the delay period
-                delay_ms_timer(half_delay_ms);
-                
-                // Stop tone for the remaining half
-                pwm_set_duty(0);
-                // delay_ms_timer(half_delay_ms);
+        // Find edges
+        pb_falling_edge = (pb_state_prev ^ pb_state_curr) & pb_state_prev;
+        pb_rising_edge = (pb_state_prev ^ pb_state_curr) & pb_state_curr;
 
-                uart_puts("Tone finished\r\n");
+
+        // State machine
+        switch (TONE_STATE)
+        {
+        case PAUSED:
+            // Wait for press
+            if (pb_falling_edge & (PIN4_bm | PIN5_bm | PIN6_bm | PIN7_bm))
+            {
+                if (pb_falling_edge & PIN4_bm)
+                    pb_current = 1;
+                else if (pb_falling_edge & PIN5_bm)
+                    pb_current = 2;
+                else if (pb_falling_edge & PIN6_bm)
+                    pb_current = 3;
+                else if (pb_falling_edge & PIN7_bm)
+                    pb_current = 4;
+
+                play_tone(pb_current - 1);
+
+                // Update flags
+                pb_released = 0;
+                prepare_delay();
+
+                // State transition
+                TONE_STATE = PLAYING;
             }
+            else if (uart_play == 1)
+            {
+                // Play whatever was previously selected
+                play_selected_tone();
+                prepare_delay();
+
+                // Update flags
+                pb_released = 1;
+                uart_play = 0;
+
+                // State transition
+                TONE_STATE= PLAYING;
+            }
+            break;
+        case PLAYING:
+            if (uart_stop == 1)
+            {
+                stop_tone();
+                TONE_STATE = PAUSED;
+                uart_stop = 0;
+            }
+            else if (!pb_released)
+            {
+                // Wait for release
+                if (pb_rising_edge & PIN4_bm && pb_current == 1)
+                    pb_released = 1;
+                else if (pb_rising_edge & PIN5_bm && pb_current == 2)
+                    pb_released = 1;
+                else if (pb_rising_edge & PIN6_bm && pb_current == 3)
+                    pb_released = 1;
+                else if (pb_rising_edge & PIN7_bm && pb_current == 4)
+                    pb_released = 1;
+            }
+            else
+            {
+                // Stop if elapsed time is greater than playback time
+                if (elapsed_time_in_milliseconds >= playback_delay)
+                {
+                    stop_tone();
+                    TONE_STATE = PAUSED;
+                }
+            }
+            break;
+        default:
+            TONE_STATE = PAUSED;
+            stop_tone();
+            break;
         }
-            // After checking all buttons, update pb_previous_state
-            pb_previous_state = pb_debounced_state;
-            // Small delay to prevent overwhelming the system
-            delay_ms_timer(10);*/ 
-
-            while(uart_receive() != 'a');
-        
-            uart_puts("Past the while loop! Should turn on display. This indicates that SPI logic is working!");
-            
-            update_display(0,0);
-
-            uart_puts("Passed update function.");
-    } 
+    }
 }

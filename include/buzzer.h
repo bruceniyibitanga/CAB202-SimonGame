@@ -1,15 +1,12 @@
-#ifndef BUZZER_H
-#define BUZZER_H
+#include <stdint.h>
 
-// Initialise the buzzer hardware
 void buzzer_init(void);
-// Play a tone (frequency in Hz, duration in ms)
-void buzzer_play(uint16_t frequency, uint16_t duration);
-// Stop the buzzer
-void buzzer_stop(void);
+void increase_octave(void);
+void decrease_octave(void);
 
-// TESTING:
+void update_tone(uint8_t new_tone);
+void play_selected_tone(void);
+void play_tone(uint8_t tone);
+void stop_tone(void);
 
-void buzzer_set_frequency(uint16_t freq_hz);
-
-#endif
+volatile uint8_t is_playing;

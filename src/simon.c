@@ -1,6 +1,7 @@
 #include "simon.h"
 #include "display.h"
 #include "buzzer.h"
+#include "display_macros.h" // Include macros for DISP_OFF and others
 #include <stdlib.h>
 #include <stdint.h>
 #include <stdbool.h>
@@ -10,6 +11,21 @@ static uint8_t sequence[SIMON_MAX_SEQUENCE];
 static uint8_t sequence_length = 1;
 static uint8_t user_index = 0;
 static uint8_t score = 0;
+
+// Declare lfsr as static at the top of the file
+static uint8_t lfsr = 0x01; // Linear feedback shift register
+
+// Implement LFSR to generate pseudo-random numbers
+uint8_t LFSR(void) {
+    uint8_t bit = ((lfsr >> 7) ^ (lfsr >> 5) ^ (lfsr >> 4) ^ (lfsr >> 3)) & 1;
+    lfsr = (lfsr << 1) | bit;
+    return lfsr & 0x03; // Return value 0-3
+}
+
+// Implement reset_LFSR to reset the LFSR state
+void reset_LFSR(void) {
+    lfsr = 0x01;
+}
 
 // Helper: Generate a random step (0-3)
 static uint8_t random_step(void) {
@@ -27,11 +43,11 @@ static uint8_t random_step(void) {
 // Helper: Play back the sequence
 static void playback_sequence(void) {
     for (uint8_t i = 0; i < sequence_length; i++) {
-        display_show(sequence[i]);
+        display_digits(sequence[i], DISP_OFF);
         buzzer_play(440 + 100 * sequence[i], 200); // Example: different tone per step
         // Delay (replace with timer or busy-wait as needed)
         for (volatile uint32_t d = 0; d < 20000; d++);
-        display_clear();
+        // display_clear();
         for (volatile uint32_t d = 0; d < 10000; d++);
     }
 }
@@ -54,7 +70,7 @@ void simon_init(void) {
 void simon_task(void) {
     switch (state) {
         case SIMON_IDLE:
-            display_show(0); // Show 0 or attract mode
+            // display_show(0); // Show 0 or attract mode
             // TODO: Wait for start button
             // If start pressed:
             //   state = SIMON_PLAYBACK;

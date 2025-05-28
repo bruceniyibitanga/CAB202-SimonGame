@@ -1,4 +1,5 @@
 #include <avr/io.h>
+
 #include <avr/interrupt.h>
 #include "stdio.h"
 #include "stdint.h"
@@ -8,37 +9,33 @@
 
 volatile uint8_t left_byte = DISP_OFF | DISP_LHS;
 volatile uint8_t right_byte = DISP_OFF;
-static uint8_t display_side = 0; // 0 = left, 1 = right
 
 void display_init()
 {
-    // Configure the DISP
-    PORTB.DIRSET = PIN1_bm;
-    PORTB.OUTCLR = PIN5_bm; // TURN ON LED DP
-
+    PORTB.DIRSET = PIN1_bm;     // PB1 is DISP_EN
+    PORTB.OUTCLR = PIN1_bm;     // Active LOW to enable display
 }
 
 void update_display(const uint8_t left, const uint8_t right)
 {
-    left_byte = left | DISP_LHS;
-    right_byte = right;    
+    left_byte = left | DISP_LHS;   // Left side with LHS bit set
+    right_byte = right;            // Right side (LHS bit not set)
 }
 
-// Function to toggle display side
-void display_toggle(void)
+// Function to display specific digits
+void display_digits(uint8_t left_digit, uint8_t right_digit)
 {
-    PORTB.OUTCLR = PIN1_bm;
-}
-
-void display_show(uint8_t value) {
-    // TODO: Implement display pattern lookup and update
-    update_display(value, value);
+    const uint8_t digit_patterns[] = {
+        DIGIT_0, DIGIT_1, DIGIT_2, DIGIT_3, DIGIT_4,
+        DIGIT_5, DIGIT_6, DIGIT_7, DIGIT_8, DIGIT_9
+    };
+    
+    uint8_t left_pattern = (left_digit < 10) ? digit_patterns[left_digit] : DISP_OFF;
+    uint8_t right_pattern = (right_digit < 10) ? digit_patterns[right_digit] : DISP_OFF;
+    
+    update_display(left_pattern, right_pattern);
 }
 
 void display_clear(void) {
     update_display(DISP_OFF, DISP_OFF);
-}
-
-void display_show_pattern(uint8_t pattern) {
-    update_display(pattern, pattern);
 }

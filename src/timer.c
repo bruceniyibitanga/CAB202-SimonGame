@@ -10,34 +10,75 @@ volatile uint8_t pb_debounced_state = 0xFF;
 static uint8_t count0 = 0;
 static uint8_t count1 = 0;
 
+// Display multiplexing variable
+static uint8_t display_side = 0;
+
+// Timing variables for general use
+volatile uint16_t elapsed_time_in_milliseconds = 0;
+volatile uint16_t playback_delay = 250;
+volatile uint16_t new_playback_delay = 250;
+
+// ----------------------  INITIALISATION  -------------------------------
 void timer_init(void)
 {
-    TCB1.CTRLB = TCB_CNTMODE_INT_gc; // Configure TCB1 in periodic interrupt mode
-    TCB1.CCMP = 16667;                // Set interval for 5 ms (16667 clocks @ 3.333 MHz)
-    TCB1.INTCTRL = TCB_CAPT_bm;      // CAPT interrupt enable
-    TCB1.CTRLA = TCB_ENABLE_bm;  
+    // Initialize TCB0 for 1ms general timing if available
+    // Used for the Simon game timing requirements
+    // TCB0: 1ms interrupt for millisecond timing
+    // At 3.333MHz: 1ms = 3,333 cycles
+
+    // TCB0.CCMP = TCB_CNTMODE_INT_gc;
+    TCB0.CCMP = 3333 - 1;
+    TCB0.INTCTRL = TCB_CAPT_bm;
+    TCB0.CTRLA = TCB_ENABLE_bm;
+
+    // TCB1: 5ms interrupt for button debouncing and display multiplexing
+    // At 3.333MHz: 5ms = 16,665 cycles (using 16667 for slight over-sampling)
+    
+    TCB1.CTRLB = TCB_CNTMODE_INT_gc;  // Configure TCB1 in periodic interrupt mode
+    // Set interval for 5ms (-1 because counter starts at 0)
+    TCB1.CCMP = 16667 - 1;            
+    TCB1.INTCTRL = TCB_CAPT_bm;       // Enable CAPT interrupt
+    TCB1.CTRLA = TCB_ENABLE_bm;       // Enable timer
+}
+// ----------------------  DELAY RESET  --------------------------------
+void prepare_delay(void)
+{
+    elapsed_time_in_milliseconds = 0; // Reset the elapsed time counter
+    playback_delay = new_playback_delay; // Reset playback delay
 }
 
+// ----------------------  1ms TIMER INTERRUPT  ------------------------
+
+ISR(TCB0_INT_vect)
+{
+    elapsed_time_in_milliseconds++;
+    // Clear interrupt flags
+    TCB0.INTFLAGS = TCB_CAPT_bm; 
+}
+
+// ----------------------  PUSH BUTTON HANDLING  ----------------------
+
+// TCB1 ISR - Handles button debouncing and display multiplexing every 5ms
 ISR(TCB1_INT_vect)
 {
-    // Handle button debouncing
+    // Button debouncing logic (your existing implementation)
     uint8_t pb_sample = PORTA.IN;
     uint8_t pb_changed = pb_sample ^ pb_debounced_state;
-    count1 = (count1^count0) & pb_changed;
+    
+    // Two-step debouncing algorithm
+    count1 = (count1 ^ count0) & pb_changed;
     count0 = ~count0 & pb_changed;
     pb_debounced_state ^= (count1 & count0) | (pb_changed & pb_debounced_state);
-
-    static uint8_t display_side = 0;
-    if(display_side)
-    {
+    
+    // Display multiplexing - alternate between left and right digits
+    if (display_side) {
         spi_write(right_byte);
-    }
-    else 
-    {
+    } else {
         spi_write(left_byte);
     }
     display_side ^= 1;
-
+    
+    // Clear interrupt flag
     TCB1.INTFLAGS = TCB_CAPT_bm;
 }
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        

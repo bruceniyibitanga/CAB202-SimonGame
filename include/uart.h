@@ -1,17 +1,17 @@
 #include <stdint.h>
+// Control flags
+extern volatile uint8_t uart_play;
+extern volatile uint8_t uart_stop;
+extern volatile uint8_t uart_reset;
+extern volatile uint32_t new_seed;
+extern volatile uint8_t update_seed;
 
-// Initialise UART hardware
-void uart_init(void);
-// Send a character
-void uart_send(char c);
-// Receive a character (blocking)
-char uart_receive(void);
-// Check if data is available
-int uart_available(void);
-
+// Game reporting
+void report_score(uint16_t score, uint8_t is_success);
 
 void uart_puts(const char *str);
 
-void uart_putnum(uint16_t num);
+void uart_send(char c);
 
-void uart_putfloat(float val);
+void uart_init(void);
+

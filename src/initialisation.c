@@ -14,14 +14,14 @@ void system_init(void) {
 
 void peripherals_init(void) {
 
+    // BUZZER (PIN0), USART0 TXD (PIN2)
+    PORTB.DIRSET = PIN0_bm | PIN2_bm;
+
     // Initialise display
     display_init();
 
     // Initialise SPI for display
     spi_init();
-
-    // Initialise buzzer
-    buzzer_init();
 
     // Initialise ADC
     adc_init();
@@ -34,6 +34,4 @@ void peripherals_init(void) {
     
     // Initialise timer counters
     timer_init();
-    delay_timer_init();
-
 }

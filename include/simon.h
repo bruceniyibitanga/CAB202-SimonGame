@@ -1,3 +1,5 @@
+#include "stdint.h"
+
 #ifndef SIMON_H
 #define SIMON_H
 
@@ -16,5 +18,5 @@ typedef enum {
 // Function prototypes
 void simon_init(void);
 void simon_task(void);
-
+uint8_t LFSR();
 #endif // SIMON_H
