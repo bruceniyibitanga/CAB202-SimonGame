@@ -10,13 +10,10 @@ volatile uint8_t pb_debounced_state = 0xFF;
 static uint8_t count0 = 0;
 static uint8_t count1 = 0;
 
-// Display multiplexing variable
-static uint8_t display_side = 0;
-
 // Timing variables for general use
 volatile uint16_t elapsed_time_in_milliseconds = 0;
-volatile uint16_t playback_delay = 2000;
-volatile uint16_t new_playback_delay = 2000;
+volatile uint16_t playback_delay = 500;
+volatile uint16_t new_playback_delay = 500;
 
 // ----------------------  INITIALISATION  -------------------------------
 void timer_init(void)
@@ -60,8 +57,7 @@ ISR(TCB0_INT_vect)
 
 // TCB1 ISR - Handles button debouncing and display multiplexing every 5ms
 ISR(TCB1_INT_vect)
-{
-    // Button debouncing logic (your existing implementation)
+{    // Button debouncing logic
     uint8_t pb_sample = PORTA.IN;
     uint8_t pb_changed = pb_sample ^ pb_debounced_state;
     
@@ -70,13 +66,8 @@ ISR(TCB1_INT_vect)
     count0 = ~count0 & pb_changed;
     pb_debounced_state ^= (count1 & count0) | (pb_changed & pb_debounced_state);
     
-    // Display multiplexing - alternate between left and right digits
-    if (display_side) {
-        spi_write(right_byte);
-    } else {
-        spi_write(left_byte);
-    }
-    display_side ^= 1;
+    // Update display
+    swap_display_digit();
     
     // Clear interrupt flag
     TCB1.INTFLAGS = TCB_CAPT_bm;

@@ -8,6 +8,8 @@
 #include "timer.h"
 #include "uart.h"
 #include "button.h"
+#include "display.h"
+#include "display_macros.h"
 
 void state_machine(void);
 
@@ -63,6 +65,9 @@ void state_machine(void)
     // Additional delay flag
     uint8_t waiting_extra_delay = 0;
 
+    // Clear display at start
+    update_display(DISP_OFF, DISP_OFF);
+
     while (1)
     {
         // Save state from previous iteration
@@ -74,7 +79,6 @@ void state_machine(void)
         pb_falling_edge = (pb_state_prev ^ pb_state_curr) & pb_state_prev;
         pb_rising_edge = (pb_state_prev ^ pb_state_curr) & pb_state_curr;
 
-
         // State machine
         switch (TONE_STATE)
         {
@@ -82,14 +86,22 @@ void state_machine(void)
             // Wait for press
             if (pb_falling_edge & (PIN4_bm | PIN5_bm | PIN6_bm | PIN7_bm))
             {
-                if (pb_falling_edge & PIN4_bm)
+                if (pb_falling_edge & PIN4_bm) {
                     pb_current = 1;
-                else if (pb_falling_edge & PIN5_bm)
+                    update_display(DISP_BAR_LEFT, DISP_OFF);  // Left bar on left display
+                }
+                else if (pb_falling_edge & PIN5_bm) {
                     pb_current = 2;
-                else if (pb_falling_edge & PIN6_bm)
+                    update_display(DISP_BAR_RIGHT, DISP_OFF); // Right bar on left display
+                }
+                else if (pb_falling_edge & PIN6_bm) {
                     pb_current = 3;
-                else if (pb_falling_edge & PIN7_bm)
+                    update_display(DISP_OFF, DISP_BAR_LEFT);  // Left bar on right display
+                }
+                else if (pb_falling_edge & PIN7_bm) {
                     pb_current = 4;
+                    update_display(DISP_OFF, DISP_BAR_RIGHT); // Right bar on right display
+                }
 
                 play_tone(pb_current - 1);
 
@@ -121,6 +133,7 @@ void state_machine(void)
                 TONE_STATE = PAUSED;
                 uart_stop = 0;
                 waiting_extra_delay = 0;
+                update_display(DISP_OFF, DISP_OFF); // Clear display
             }
             else if (!pb_released)
             {
@@ -173,6 +186,7 @@ void state_machine(void)
                         stop_tone();
                         TONE_STATE = PAUSED;
                         waiting_extra_delay = 0;
+                        update_display(DISP_OFF, DISP_OFF); // Clear display
                     }
                 }
                 else if (elapsed_time_in_milliseconds >= playback_delay)
@@ -180,6 +194,7 @@ void state_machine(void)
                     // Normal delay period finished
                     stop_tone();
                     TONE_STATE = PAUSED;
+                    update_display(DISP_OFF, DISP_OFF); // Clear display
                 }
                 // If neither waiting_extra_delay nor playback_delay reached,
                 // continue playing the tone
@@ -189,6 +204,7 @@ void state_machine(void)
             TONE_STATE = PAUSED;
             stop_tone();
             waiting_extra_delay = 0;
+            update_display(DISP_OFF, DISP_OFF); // Clear display
             break;
         }
     }
