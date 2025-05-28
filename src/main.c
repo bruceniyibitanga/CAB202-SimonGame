@@ -59,6 +59,9 @@ void state_machine(void)
 
     // Pushbutton flags
     uint8_t pb_falling_edge, pb_rising_edge, pb_released = 0;
+    
+    // Additional delay flag
+    uint8_t waiting_extra_delay = 0;
 
     while (1)
     {
@@ -117,32 +120,75 @@ void state_machine(void)
                 stop_tone();
                 TONE_STATE = PAUSED;
                 uart_stop = 0;
+                waiting_extra_delay = 0;
             }
             else if (!pb_released)
             {
-                // Wait for release
+                // Check for button release
                 if (pb_rising_edge & PIN4_bm && pb_current == 1)
-                    pb_released = 1;
-                else if (pb_rising_edge & PIN5_bm && pb_current == 2)
-                    pb_released = 1;
-                else if (pb_rising_edge & PIN6_bm && pb_current == 3)
-                    pb_released = 1;
-                else if (pb_rising_edge & PIN7_bm && pb_current == 4)
-                    pb_released = 1;
-            }
-            else
-            {
-                // Stop if elapsed time is greater than playback time
-                if (elapsed_time_in_milliseconds >= playback_delay)
                 {
+                    pb_released = 1;
+                    // Only start extra delay if we've already played for minimum time
+                    if (elapsed_time_in_milliseconds >= playback_delay)
+                    {
+                        prepare_delay(); // Reset timer for the extra delay
+                        waiting_extra_delay = 1;
+                    }
+                }
+                else if (pb_rising_edge & PIN5_bm && pb_current == 2)
+                {
+                    pb_released = 1;
+                    if (elapsed_time_in_milliseconds >= playback_delay)
+                    {
+                        prepare_delay();
+                        waiting_extra_delay = 1;
+                    }
+                }
+                else if (pb_rising_edge & PIN6_bm && pb_current == 3)
+                {
+                    pb_released = 1;
+                    if (elapsed_time_in_milliseconds >= playback_delay)
+                    {
+                        prepare_delay();
+                        waiting_extra_delay = 1;
+                    }
+                }
+                else if (pb_rising_edge & PIN7_bm && pb_current == 4)
+                {
+                    pb_released = 1;
+                    if (elapsed_time_in_milliseconds >= playback_delay)
+                    {
+                        prepare_delay();
+                        waiting_extra_delay = 1;
+                    }
+                }
+            }
+            else // Button is released
+            {
+                if (waiting_extra_delay)
+                {
+                    // In extra delay period after long press
+                    if (elapsed_time_in_milliseconds >= (playback_delay / 2))
+                    {
+                        stop_tone();
+                        TONE_STATE = PAUSED;
+                        waiting_extra_delay = 0;
+                    }
+                }
+                else if (elapsed_time_in_milliseconds >= playback_delay)
+                {
+                    // Normal delay period finished
                     stop_tone();
                     TONE_STATE = PAUSED;
                 }
+                // If neither waiting_extra_delay nor playback_delay reached,
+                // continue playing the tone
             }
             break;
         default:
             TONE_STATE = PAUSED;
             stop_tone();
+            waiting_extra_delay = 0;
             break;
         }
     }

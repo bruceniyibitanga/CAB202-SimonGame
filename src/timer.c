@@ -15,8 +15,8 @@ static uint8_t display_side = 0;
 
 // Timing variables for general use
 volatile uint16_t elapsed_time_in_milliseconds = 0;
-volatile uint16_t playback_delay = 250;
-volatile uint16_t new_playback_delay = 250;
+volatile uint16_t playback_delay = 2000;
+volatile uint16_t new_playback_delay = 2000;
 
 // ----------------------  INITIALISATION  -------------------------------
 void timer_init(void)
