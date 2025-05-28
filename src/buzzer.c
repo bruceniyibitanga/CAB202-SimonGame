@@ -8,7 +8,6 @@
 
 #define MAX_OCTAVE 3
 #define MIN_OCTAVE -3
-#define F_CPU 3333333UL
 
 volatile uint8_t is_playing = 0;
 static int8_t selected_tone = 0;

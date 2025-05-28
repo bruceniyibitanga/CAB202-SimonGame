@@ -1,115 +1,251 @@
 #include "simon.h"
 #include "display.h"
 #include "buzzer.h"
-#include "display_macros.h" // Include macros for DISP_OFF and others
-#include <stdlib.h>
+#include "display_macros.h"
+#include "button.h"
+#include "button_macros.h"
+#include "timer.h"
 #include <stdint.h>
 #include <stdbool.h>
 
-static simon_state_t state = SIMON_IDLE;
-static uint8_t sequence[SIMON_MAX_SEQUENCE];
-static uint8_t sequence_length = 1;
-static uint8_t user_index = 0;
-static uint8_t score = 0;
+// Define display patterns for the bars
+#define DISP_BAR_LEFT (DISP_SEG_E & DISP_SEG_F)   // Left segments
+#define DISP_BAR_RIGHT (DISP_SEG_B & DISP_SEG_C)  // Right segments
 
-// Declare lfsr as static at the top of the file
-static uint8_t lfsr = 0x01; // Linear feedback shift register
+// Game states and variables
+static simon_state_t state = SIMON_GENERATE;
+static uint8_t sequence_length = 4;  // Start with length 4 as per requirements
+static uint8_t sequence_index = 0;
+static uint8_t current_step = 0;
 
-// Implement LFSR to generate pseudo-random numbers
-uint8_t LFSR(void) {
-    uint8_t bit = ((lfsr >> 7) ^ (lfsr >> 5) ^ (lfsr >> 4) ^ (lfsr >> 3)) & 1;
-    lfsr = (lfsr << 1) | bit;
-    return lfsr & 0x03; // Return value 0-3
-}
+// Store sequence steps
+static uint8_t sequence[32];  // Array to store the sequence
 
-// Implement reset_LFSR to reset the LFSR state
-void reset_LFSR(void) {
-    lfsr = 0x01;
-}
+// LFSR configuration
+#define LFSR_MASK 0xE2025CAB
+#define INITIAL_SEED 0x12236632  // Student number
 
-// Helper: Generate a random step (0-3)
-static uint8_t random_step(void) {
-    // Simple way to generate pseudo-random numbers
-    static uint8_t lfsr = 0x01;  // Linear feedback shift register
+// LFSR state
+static uint32_t lfsr_state = INITIAL_SEED;
+
+// Function to display a two-digit number
+void display_two_digit_number(uint8_t num) {
+    uint8_t tens = num / 10;
+    uint8_t ones = num % 10;
     
-    // Implement LFSR with taps at bits 7,5,4,3
-    uint8_t bit = ((lfsr >> 7) ^ (lfsr >> 5) ^ (lfsr >> 4) ^ (lfsr >> 3)) & 1;
-    lfsr = (lfsr << 1) | bit;
+    uint8_t tens_pattern = DIGIT_0;  // Default to 0
+    uint8_t ones_pattern = DIGIT_0;  // Default to 0
     
-    // Return value 0-3
-    return lfsr & 0x03;
+    // Convert digits to patterns
+    switch(tens) {
+        case 1: tens_pattern = DIGIT_1; break;
+        case 2: tens_pattern = DIGIT_2; break;
+        case 3: tens_pattern = DIGIT_3; break;
+        case 4: tens_pattern = DIGIT_4; break;
+        case 5: tens_pattern = DIGIT_5; break;
+        case 6: tens_pattern = DIGIT_6; break;
+        case 7: tens_pattern = DIGIT_7; break;
+        case 8: tens_pattern = DIGIT_8; break;
+        case 9: tens_pattern = DIGIT_9; break;
+    }
+    
+    switch(ones) {
+        case 1: ones_pattern = DIGIT_1; break;
+        case 2: ones_pattern = DIGIT_2; break;
+        case 3: ones_pattern = DIGIT_3; break;
+        case 4: ones_pattern = DIGIT_4; break;
+        case 5: ones_pattern = DIGIT_5; break;
+        case 6: ones_pattern = DIGIT_6; break;
+        case 7: ones_pattern = DIGIT_7; break;
+        case 8: ones_pattern = DIGIT_8; break;
+        case 9: ones_pattern = DIGIT_9; break;
+    }
+    
+    update_display(tens_pattern, ones_pattern);
 }
 
-// Helper: Play back the sequence
-static void playback_sequence(void) {
-    for (uint8_t i = 0; i < sequence_length; i++) {
-        display_digits(sequence[i], DISP_OFF);
-        buzzer_play(440 + 100 * sequence[i], 200); // Example: different tone per step
-        // Delay (replace with timer or busy-wait as needed)
-        for (volatile uint32_t d = 0; d < 20000; d++);
-        // display_clear();
-        for (volatile uint32_t d = 0; d < 10000; d++);
+// LFSR state management functions
+// Get next step from LFSR (0-3)
+static uint8_t get_next_step(void) {
+    uint8_t bit = lfsr_state & 1;
+    lfsr_state = lfsr_state >> 1;
+    if (bit) {
+        lfsr_state = lfsr_state ^ LFSR_MASK;
+    }
+    return lfsr_state & 0b11;
+}
+
+// Reset LFSR to initial state
+static void reset_lfsr(void) {
+    lfsr_state = INITIAL_SEED;
+}
+
+// Display pattern and play tone for a step
+static void display_step_pattern(uint8_t step) {
+    switch(step) {
+        case 0:  // E(high) - segments EF on left digit
+            update_display(DISP_BAR_LEFT, DISP_OFF);
+            play_tone(0);
+            break;
+        case 1:  // C# - segments BC on left digit
+            update_display(DISP_BAR_RIGHT, DISP_OFF);
+            play_tone(1);
+            break;
+        case 2:  // A - segments EF on right digit
+            update_display(DISP_OFF, DISP_BAR_LEFT);
+            play_tone(2);
+            break;
+        case 3:  // E(low) - segments BC on right digit
+            update_display(DISP_OFF, DISP_BAR_RIGHT);
+            play_tone(3);
+            break;
     }
 }
 
-// Helper: Get user input (stub, replace with button read)
-static int8_t get_user_input(void) {
-    // TODO: Implement button reading
-    
-    return -1;
+// Convert button press to step number (0-3)
+static uint8_t get_button_step(void) {
+    if (button_pressed(PIN4_bm)) return 0;  // S1 (left)
+    if (button_pressed(PIN5_bm)) return 1;  // S2 (right)
+    if (button_pressed(PIN6_bm)) return 2;  // S3 (up)
+    if (button_pressed(PIN7_bm)) return 3;  // S4 (down)
+    return 0xFF;  // No button pressed
+}
+
+// Get currently pressed button (for long press handling)
+static uint8_t get_current_button(void) {
+    uint8_t button_state = PORTA.IN;
+    if (!(button_state & PIN4_bm)) return 0;
+    if (!(button_state & PIN5_bm)) return 1;
+    if (!(button_state & PIN6_bm)) return 2;
+    if (!(button_state & PIN7_bm)) return 3;
+    return 0xFF;
+}
+
+// Check if specific button was released
+static bool was_button_released(uint8_t step) {
+    switch(step) {
+        case 0: return button_released(PIN4_bm);
+        case 1: return button_released(PIN5_bm);
+        case 2: return button_released(PIN6_bm);
+        case 3: return button_released(PIN7_bm);
+        default: return false;
+    }
 }
 
 void simon_init(void) {
-    state = SIMON_IDLE;
-    sequence_length = 1;
-    user_index = 0;
-    score = 0;
-    for (uint8_t i = 0; i < SIMON_MAX_SEQUENCE; i++) sequence[i] = random_step();
+    state = SIMON_GENERATE;
+    sequence_length = 4;  // Start with 4 steps
+    sequence_index = 0;
+    reset_lfsr();
+    prepare_delay();
 }
 
 void simon_task(void) {
+    // Update button states at the start of each task iteration
+    update_button_states();
+
     switch (state) {
-        case SIMON_IDLE:
-            // display_show(0); // Show 0 or attract mode
-            // TODO: Wait for start button
-            // If start pressed:
-            //   state = SIMON_PLAYBACK;
+        case SIMON_GENERATE:
+            if (sequence_index <= sequence_length - 1) {
+                sequence[sequence_index] = get_next_step();
+                display_step_pattern(sequence[sequence_index]);
+                prepare_delay();
+                state = SIMON_PLAY_ON;
+            } else {
+                sequence_index = 0;
+                state = AWAITING_INPUT;
+            }
             break;
-        case SIMON_PLAYBACK:
-            playback_sequence();
-            user_index = 0;
-            state = SIMON_USER_INPUT;
+
+        case SIMON_PLAY_ON:
+            if (elapsed_time_in_milliseconds >= PLAYBACK_DELAY) {
+                update_display(DISP_OFF, DISP_OFF);
+                stop_tone();
+                prepare_delay();
+                state = SIMON_PLAY_OFF;
+            }
             break;
-        case SIMON_USER_INPUT: {
-            int8_t input = get_user_input();
-            if (input >= 0) {
-                display_show(input);
-                buzzer_play(440 + 100 * input, 100);
-                if (input == sequence[user_index]) {
-                    user_index++;
-                    if (user_index >= sequence_length) {
-                        score++;
-                        sequence_length++;
-                        state = SIMON_SUCCESS;
-                    }
-                } else {
-                    state = SIMON_FAILURE;
+
+        case SIMON_PLAY_OFF:
+            if (elapsed_time_in_milliseconds >= PLAYBACK_DELAY/2) {
+                sequence_index++;
+                state = SIMON_GENERATE;
+            }
+            break;
+
+        case AWAITING_INPUT:
+            {
+                uint8_t pressed_step = get_button_step();
+                if (pressed_step != 0xFF) {  // Valid button press
+                    display_step_pattern(pressed_step);
+                    pb_current = pressed_step + 1;  // Save current button
+                    pb_released = 0;
+                    prepare_delay();
+                    state = HANDLE_INPUT;
                 }
             }
             break;
-        }
-        case SIMON_SUCCESS:
-            // Success feedback
-            display_show(score);
-            for (volatile uint32_t d = 0; d < 30000; d++);
-            state = SIMON_PLAYBACK;
+
+        case HANDLE_INPUT:
+            if (was_button_released(pb_current - 1) && elapsed_time_in_milliseconds >= PLAYBACK_DELAY/2) {
+                update_display(DISP_OFF, DISP_OFF);
+                stop_tone();
+                pb_released = 1;
+
+                // Check if the pressed button matched the sequence
+                if (pb_current - 1 == sequence[sequence_index]) {  // Correct input
+                    if (sequence_index < sequence_length - 1) {
+                        sequence_index++;
+                        state = AWAITING_INPUT;
+                    } else {  // Completed sequence successfully
+                        update_display(DISP_SUCCESS, DISP_SUCCESS);
+                        prepare_delay();
+                        sequence_index = 0;
+                        sequence_length++;
+                        state = SUCCESS;
+                    }
+                } else {  // Wrong input
+                    update_display(DISP_FAIL, DISP_FAIL);
+                    prepare_delay();
+                    state = FAIL;
+                }
+            }
+            // Handle long press
+            else if (!pb_released && elapsed_time_in_milliseconds >= PLAYBACK_DELAY) {
+                uint8_t current = get_current_button();
+                if (current == pb_current - 1) {  // Button still held
+                    // Keep playing tone and showing pattern
+                    display_step_pattern(current);
+                }
+            }
             break;
-        case SIMON_FAILURE:
-            // Failure feedback
-            display_show_pattern(0xFF); // All segments on
-            buzzer_play(200, 500);
-            for (volatile uint32_t d = 0; d < 30000; d++);
-            simon_init();
+
+        case SUCCESS:
+            if (elapsed_time_in_milliseconds >= PLAYBACK_DELAY) {
+                update_display(DISP_OFF, DISP_OFF);
+                reset_lfsr();  // Reset LFSR for next sequence
+                state = SIMON_GENERATE;
+            }
+            break;
+
+        case FAIL:
+            if (elapsed_time_in_milliseconds >= PLAYBACK_DELAY) {
+                state = DISP_SCORE;
+                prepare_delay();
+            }
+            break;
+
+        case DISP_SCORE:
+            if (elapsed_time_in_milliseconds >= PLAYBACK_DELAY) {
+                // Show final score
+                display_two_digit_number(sequence_length - 1);
+                if (elapsed_time_in_milliseconds >= 2 * PLAYBACK_DELAY) {
+                    sequence_length = 4;  // Reset to initial length
+                    sequence_index = 0;
+                    reset_lfsr();
+                    state = SIMON_GENERATE;
+                }
+            }
             break;
     }
 }

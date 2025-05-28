@@ -1,22 +1,32 @@
-#include "stdint.h"
-
 #ifndef SIMON_H
 #define SIMON_H
 
-// Simon game states
+#include <stdint.h>
+#include "display_macros.h"
+
+// Timing configuration
+#define PLAYBACK_DELAY 500  // 500ms for pattern display
+
+// Simon game states matching state diagram
 typedef enum {
-    SIMON_IDLE,
-    SIMON_PLAYBACK,
-    SIMON_USER_INPUT,
-    SIMON_SUCCESS,
-    SIMON_FAILURE
+    SIMON_GENERATE,    // Generate sequence
+    SIMON_PLAY_ON,     // Display pattern
+    SIMON_PLAY_OFF,    // Gap between patterns
+    AWAITING_INPUT,    // Wait for button press
+    HANDLE_INPUT,      // Process button press
+    EVALUATE_INPUT,    // Check if input matches sequence
+    SUCCESS,          // Show success pattern
+    FAIL,            // Show failure pattern
+    DISP_SCORE       // Display final score
 } simon_state_t;
 
-// Maximum sequence length
-#define SIMON_MAX_SEQUENCE 32
+// Display patterns for success/fail using correct segment macros
+#define DISP_SUCCESS (DISP_SEG_A & DISP_SEG_B & DISP_SEG_F & DISP_SEG_G)  // Letter P
+#define DISP_FAIL (DISP_SEG_A & DISP_SEG_E & DISP_SEG_F & DISP_SEG_G)     // Letter F
 
 // Function prototypes
 void simon_init(void);
 void simon_task(void);
-uint8_t LFSR();
+void display_two_digit_number(uint8_t num);  // Add declaration
+
 #endif // SIMON_H
