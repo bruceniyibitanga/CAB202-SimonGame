@@ -12,6 +12,7 @@ void uart_init(void) {
     USART0.BAUD = 1389;                           // 9600 baud @ 3.333 MHz
     USART0.CTRLA = USART_RXCIE_bm;
     USART0.CTRLB = USART_RXEN_bm | USART_TXEN_bm; // Enable Tx/Rx
+
 }
 
 // ----------------------  UART SEND FUNCTIONS  ----------------------
@@ -26,6 +27,12 @@ void uart_puts(const char *str) {
     while (*str) {
         uart_send(*str++);
     }
+}
+
+void uart_putnum(uint16_t num) {
+    char buf[6];
+    itoa(num, buf, 10);  // Convert to decimal string
+    uart_puts(buf);
 }
 
 // ----------------------  MAIN UART LOGIC  ----------------------

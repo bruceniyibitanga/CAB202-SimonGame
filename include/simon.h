@@ -5,7 +5,7 @@
 #include "display_macros.h"
 
 // Timing configuration
-#define PLAYBACK_DELAY 500  // 500ms for pattern display
+#define PLAYBACK_DELAY playback_delay // between 250ms and 2000ms, set by potentiometer
 
 // Simon game states matching state diagram
 typedef enum {

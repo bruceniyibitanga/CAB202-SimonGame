@@ -2,7 +2,8 @@
 #include "stdint.h"
 #include "stdio.h"
 #include "adc.h"
-#include "timer_delay.h"
+#include "uart.h"
+#include "uart.h"
 
 void adc_init()
 {
@@ -28,15 +29,13 @@ void adc_read(void)
 */
 uint8_t adc_read()
 {
-    delay_ms_timer(1);  // instead of _delay_us(50)
     return ADC0.RESULT0;
 }
 
-
-uint16_t get_potentiometer_delay()
+uint16_t get_potentiometer_delay(void)
 {
-    uint8_t pot_value = adc_read();  // Get latest ADC result (0–255)
-    uint8_t reversed_adc = 255 - pot_value;
-    // Map 0..255 to 250..2000 ms
-    return 250 + ((uint32_t)reversed_adc * (2000 - 250)) / 255;
+    uint8_t pot_value = adc_read();
+    uint16_t value = 250 + ((uint32_t)pot_value * (2000 - 250)) / 255;
+    return value; // Return the calculated delay in milliseconds
+
 }

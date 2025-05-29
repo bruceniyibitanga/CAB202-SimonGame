@@ -13,8 +13,7 @@ static uint8_t count1 = 0;
 
 // Timing variables for general use
 volatile uint16_t elapsed_time_in_milliseconds = 0;
-volatile uint16_t playback_delay = 500;
-volatile uint16_t new_playback_delay = 500;
+volatile uint16_t playback_delay = 250; // Default playback delay in milliseconds
 
 // ----------------------  INITIALISATION  -------------------------------
 void timer_init(void)
@@ -42,7 +41,7 @@ void timer_init(void)
 void prepare_delay(void)
 {
     elapsed_time_in_milliseconds = 0; // Reset the elapsed time counter
-    playback_delay = new_playback_delay; // Reset playback delay
+    playback_delay = get_potentiometer_delay(); // Reset playback delay
 }
 
 // ----------------------  1ms TIMER INTERRUPT  ------------------------
@@ -69,6 +68,8 @@ ISR(TCB1_INT_vect)
     
     // Update display
     swap_display_digit();
+
+    playback_delay = get_potentiometer_delay(); // Update playback delay from potentiometer
     
     // Clear interrupt flag
     TCB1.INTFLAGS = TCB_CAPT_bm;

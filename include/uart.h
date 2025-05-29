@@ -15,3 +15,5 @@ void uart_send(char c);
 
 void uart_init(void);
 
+void uart_putnum(uint16_t num);
+
