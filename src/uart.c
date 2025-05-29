@@ -130,6 +130,9 @@ static uint8_t hexchar_to_int(char c)
         return 16; // Invalid
 }
 
+// UART button flag for simon_task
+volatile uint8_t uart_button_flag = 0;
+
 ISR(USART0_RXC_vect)
 {   static Serial_State SERIAL_STATE = AWAITING_COMMAND;
     static uint8_t chars_received = 0;
@@ -144,20 +147,16 @@ ISR(USART0_RXC_vect)
     case AWAITING_COMMAND:
         // Gameplay inputs - each key maps to the corresponding tone (0-3)
         if (rx_data == '1' || rx_data == 'q') {
-            play_tone(0);
-            prepare_delay();
+            uart_button_flag = 1;
         }
         else if (rx_data == '2' || rx_data == 'w') {
-            play_tone(1);
-            prepare_delay();
+            uart_button_flag = 2;
         }
         else if (rx_data == '3' || rx_data == 'e') {
-            play_tone(2);
-            prepare_delay();
+            uart_button_flag = 3;
         }
         else if (rx_data == '4' || rx_data == 'r') {
-            play_tone(3);
-            prepare_delay();
+            uart_button_flag = 4;
         }
         // Frequency control
         else if (rx_data == ',' || rx_data == 'k')
@@ -188,18 +187,7 @@ ISR(USART0_RXC_vect)
 
     case AWAITING_PAYLOAD:
         {
-            uint8_t parsed_result = hexchar_to_int(rx_data);
-            if (parsed_result != 16)
-                payload = (payload << 4) | parsed_result;
-            else
-                payload_valid = 0;
-
-            if (++chars_received == 4)
-            {
-                if (payload_valid)
-                    playback_delay = payload;
-                SERIAL_STATE = AWAITING_COMMAND;
-            }
+            
         }
         break;
 

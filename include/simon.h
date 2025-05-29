@@ -29,4 +29,14 @@ void simon_init(void);
 void simon_task(void);
 void display_two_digit_number(uint8_t num);  // Add declaration
 
+// State handler prototypes for simon.c state machine
+void state_generate(void);
+void state_play_on(void);
+void state_play_off(void);
+void state_awaiting_input(void);
+void state_handle_input(void);
+void state_success(void);
+void state_fail(void);
+void state_disp_score(void);
+
 #endif // SIMON_H

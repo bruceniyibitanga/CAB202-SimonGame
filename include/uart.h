@@ -5,6 +5,7 @@ extern volatile uint8_t uart_stop;
 extern volatile uint8_t uart_reset;
 extern volatile uint32_t new_seed;
 extern volatile uint8_t update_seed;
+extern volatile uint8_t uart_button_flag;
 
 // Game reporting
 void report_score(uint16_t score, uint8_t is_success);
@@ -16,4 +17,6 @@ void uart_send(char c);
 void uart_init(void);
 
 void uart_putnum(uint16_t num);
+
+extern volatile uint8_t uart_button_flag;
 
