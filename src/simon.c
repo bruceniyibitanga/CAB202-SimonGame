@@ -7,6 +7,7 @@
 #include "timer.h"
 #include <stdint.h>
 #include <stdbool.h>
+#include "adc.h"
 
 // Define display patterns for the bars
 #define DISP_BAR_LEFT (DISP_SEG_E & DISP_SEG_F)   // Left segments
@@ -16,7 +17,7 @@
 static simon_state_t state = SIMON_GENERATE;
 static uint8_t sequence_length = 4;  // Start with length 4 as per requirements
 static uint8_t sequence_index = 0;
-static uint8_t current_step = 0;
+static uint8_t lfsr_pos = 0; // Track current position in LFSR sequence
 
 // Store sequence steps
 static uint8_t sequence[32];  // Array to store the sequence
@@ -75,6 +76,11 @@ static uint8_t get_next_step(void) {
     return lfsr_state & 0b11;
 }
 
+void add_new_sequence_step() {
+    sequence[sequence_length] = get_next_step();
+    sequence_length++;
+}
+
 // Reset LFSR to initial state
 static void reset_lfsr(void) {
     lfsr_state = INITIAL_SEED;
@@ -102,58 +108,45 @@ static void display_step_pattern(uint8_t step) {
     }
 }
 
-// Convert button press to step number (0-3)
-static uint8_t get_button_step(void) {
-    if (button_pressed(PIN4_bm)) return 0;  // S1 (left)
-    if (button_pressed(PIN5_bm)) return 1;  // S2 (right)
-    if (button_pressed(PIN6_bm)) return 2;  // S3 (up)
-    if (button_pressed(PIN7_bm)) return 3;  // S4 (down)
-    return 0xFF;  // No button pressed
-}
 
-// Get currently pressed button (for long press handling)
-static uint8_t get_current_button(void) {
-    uint8_t button_state = PORTA.IN;
-    if (!(button_state & PIN4_bm)) return 0;
-    if (!(button_state & PIN5_bm)) return 1;
-    if (!(button_state & PIN6_bm)) return 2;
-    if (!(button_state & PIN7_bm)) return 3;
-    return 0xFF;
-}
 
-// Check if specific button was released
-static bool was_button_released(uint8_t step) {
-    switch(step) {
-        case 0: return button_released(PIN4_bm);
-        case 1: return button_released(PIN5_bm);
-        case 2: return button_released(PIN6_bm);
-        case 3: return button_released(PIN7_bm);
-        default: return false;
-    }
-}
+// Add a waiting_extra_delay flag
+static bool waiting_extra_delay = 0;
 
 void simon_init(void) {
     state = SIMON_GENERATE;
     sequence_length = 4;  // Start with 4 steps
     sequence_index = 0;
-    reset_lfsr();
+    lfsr_pos = 0;
+    lfsr_state = INITIAL_SEED;
+    // Generate the initial 4-step sequence
+    for (uint8_t i = 0; i < sequence_length; i++) {
+        sequence[i] = get_next_step();
+    }
     prepare_delay();
 }
 
 void simon_task(void) {
-    // Update button states at the start of each task iteration
-    update_button_states();
-
-    switch (state) {
+    switch (state) {        
         case SIMON_GENERATE:
-            if (sequence_index <= sequence_length - 1) {
-                sequence[sequence_index] = get_next_step();
+            // Only add a new step when we've successfully completed the previous sequence
+            if (sequence_index == 0 && sequence_length == 4 - 1 && state != DISP_SCORE) {
+                sequence[sequence_length] = get_next_step();
+                sequence_length++;
+            }
+            
+            // Play current step in sequence
+            if (sequence_index < sequence_length) {
                 display_step_pattern(sequence[sequence_index]);
                 prepare_delay();
                 state = SIMON_PLAY_ON;
             } else {
+                // All steps played, wait for user input
                 sequence_index = 0;
                 state = AWAITING_INPUT;
+                pb_current = 0;
+                pb_released = 1;
+                waiting_extra_delay = 0;
             }
             break;
 
@@ -172,79 +165,161 @@ void simon_task(void) {
                 state = SIMON_GENERATE;
             }
             break;
-
+            
         case AWAITING_INPUT:
-            {
-                uint8_t pressed_step = get_button_step();
-                if (pressed_step != 0xFF) {  // Valid button press
-                    display_step_pattern(pressed_step);
-                    pb_current = pressed_step + 1;  // Save current button
-                    pb_released = 0;
-                    prepare_delay();
-                    state = HANDLE_INPUT;
-                }
+            // Wait for press
+            if (pb_falling_edge & PIN4_bm) {
+                pb_current = 1;  // Values 1-4 (matching original code)
+                display_step_pattern(0);  // But use 0-3 for the step patterns
+                pb_released = 0;
+                prepare_delay();
+                state = HANDLE_INPUT;
+            }
+            else if (pb_falling_edge & PIN5_bm) {
+                pb_current = 2;
+                display_step_pattern(1);
+                pb_released = 0;
+                prepare_delay();
+                state = HANDLE_INPUT;
+            }
+            else if (pb_falling_edge & PIN6_bm) {
+                pb_current = 3;
+                display_step_pattern(2);
+                pb_released = 0;
+                prepare_delay();
+                state = HANDLE_INPUT;
+            }
+            else if (pb_falling_edge & PIN7_bm) {
+                pb_current = 4;
+                display_step_pattern(3);
+                pb_released = 0;
+                prepare_delay();
+                state = HANDLE_INPUT;
             }
             break;
 
         case HANDLE_INPUT:
-            if (was_button_released(pb_current - 1) && elapsed_time_in_milliseconds >= PLAYBACK_DELAY/2) {
-                update_display(DISP_OFF, DISP_OFF);
-                stop_tone();
-                pb_released = 1;
-
-                // Check if the pressed button matched the sequence
-                if (pb_current - 1 == sequence[sequence_index]) {  // Correct input
-                    if (sequence_index < sequence_length - 1) {
-                        sequence_index++;
-                        state = AWAITING_INPUT;
-                    } else {  // Completed sequence successfully
-                        update_display(DISP_SUCCESS, DISP_SUCCESS);
+            {
+                // Check for button release using simplified logic
+                uint8_t button_mask = 0;
+                switch (pb_current) {
+                    case 1: button_mask = PIN4_bm; break;
+                    case 2: button_mask = PIN5_bm; break;
+                    case 3: button_mask = PIN6_bm; break;
+                    case 4: button_mask = PIN7_bm; break;
+                    default: break;
+                }
+                
+                if (!pb_released && (pb_rising_edge & button_mask)) {
+                    // Button released - detect if it was a long press
+                    pb_released = 1;
+                    if (elapsed_time_in_milliseconds >= PLAYBACK_DELAY) {
+                        // Long press handling
                         prepare_delay();
-                        sequence_index = 0;
-                        sequence_length++;
-                        state = SUCCESS;
+                        waiting_extra_delay = 1;
                     }
-                } else {  // Wrong input
-                    update_display(DISP_FAIL, DISP_FAIL);
-                    prepare_delay();
-                    state = FAIL;
                 }
-            }
-            // Handle long press
-            else if (!pb_released && elapsed_time_in_milliseconds >= PLAYBACK_DELAY) {
-                uint8_t current = get_current_button();
-                if (current == pb_current - 1) {  // Button still held
-                    // Keep playing tone and showing pattern
-                    display_step_pattern(current);
-                }
+                else if (pb_released) { 
+                    if (waiting_extra_delay) {                        
+                        // In extra delay period after long press
+                        if (elapsed_time_in_milliseconds >= (PLAYBACK_DELAY >> 1)) {
+                            stop_tone();
+                            update_display(DISP_OFF, DISP_OFF);
+                            waiting_extra_delay = 0;
+                            
+                            // Check if button press matches sequence
+                            if ((pb_current - 1) == sequence[sequence_index]) { // Convert 1-4 to 0-3
+                                if (sequence_index < sequence_length - 1) {
+                                    sequence_index++;
+                                    state = AWAITING_INPUT;
+                                } else { // Completed sequence successfully
+                                    update_display(DISP_SUCCESS, DISP_SUCCESS);
+                                    prepare_delay();
+                                    sequence_index = 0;
+                                    state = SUCCESS;
+                                }
+                            } else { // Wrong input
+                                update_display(DISP_FAIL, DISP_FAIL);
+                                prepare_delay();
+                                state = FAIL;
+                            }
+                        }
+                    } 
+                    else if (elapsed_time_in_milliseconds >= PLAYBACK_DELAY) {                        // Normal delay period finished
+                        stop_tone();
+                        update_display(DISP_OFF, DISP_OFF);
+                        
+                        // Check if button press matches sequence
+                        if ((pb_current - 1) == sequence[sequence_index]) { // Convert 1-4 to 0-3
+                            if (sequence_index < sequence_length - 1) {
+                                sequence_index++;
+                                state = AWAITING_INPUT;
+                            } else { // Completed sequence successfully
+                                update_display(DISP_SUCCESS, DISP_SUCCESS);
+                                prepare_delay();
+                                sequence_index = 0;
+                                state = SUCCESS;
+                            }
+                        } else { // Wrong input
+                            update_display(DISP_FAIL, DISP_FAIL);
+                            prepare_delay();
+                            state = FAIL;
+                        }
+                    }
+                }            
             }
             break;
-
+            
+        case EVALUATE_INPUT:
+            // Input evaluation is handled within HANDLE_INPUT state
+            // This case exists to match the state diagram but is not used
+            state = AWAITING_INPUT;
+            break;              
         case SUCCESS:
-            if (elapsed_time_in_milliseconds >= PLAYBACK_DELAY) {
+            // Success state - display success pattern for 1 second then continue
+            if (elapsed_time_in_milliseconds >= PLAYBACK_DELAY * 2) {
                 update_display(DISP_OFF, DISP_OFF);
-                reset_lfsr();  // Reset LFSR for next sequence
+                prepare_delay();
+                add_new_sequence_step(); // Add a new step after a successful round
+                lfsr_pos++; // Move LFSR position forward
+                sequence_index = 0;
                 state = SIMON_GENERATE;
             }
             break;
-
+            
         case FAIL:
-            if (elapsed_time_in_milliseconds >= PLAYBACK_DELAY) {
-                state = DISP_SCORE;
+            // Failure state - display failure pattern for 1 second then show score
+            if (elapsed_time_in_milliseconds >= (PLAYBACK_DELAY << 1)) {
+                update_display(DISP_OFF, DISP_OFF);
                 prepare_delay();
-            }
-            break;
-
-        case DISP_SCORE:
-            if (elapsed_time_in_milliseconds >= PLAYBACK_DELAY) {
-                // Show final score
-                display_two_digit_number(sequence_length - 1);
-                if (elapsed_time_in_milliseconds >= 2 * PLAYBACK_DELAY) {
-                    sequence_length = 4;  // Reset to initial length
-                    sequence_index = 0;
-                    reset_lfsr();
-                    state = SIMON_GENERATE;
+                // On fail, set lfsr_pos to the failed step (sequence_length - 1)
+                if (sequence_length > 4) {
+                    lfsr_pos = sequence_length - 1;
+                } else {
+                    lfsr_pos = 0;
                 }
+                state = DISP_SCORE;
+            }
+            break;        case DISP_SCORE:
+            // Display score (sequence_length - 1) for 3 seconds
+            display_two_digit_number(sequence_length - 1);
+            if (elapsed_time_in_milliseconds >= (PLAYBACK_DELAY << 3)) {
+                update_display(DISP_OFF, DISP_OFF);
+                prepare_delay();
+                // Reset game parameters
+                sequence_length = 4;
+                sequence_index = 0;
+                // Reset LFSR to initial seed for new game
+                reset_lfsr();
+                // Advance LFSR to lfsr_pos
+                for (uint8_t i = 0; i < lfsr_pos; i++) {
+                    get_next_step();
+                }
+                // Generate new 4-step sequence from current LFSR position
+                for (uint8_t i = 0; i < sequence_length; i++) {
+                    sequence[i] = get_next_step();
+                }
+                state = SIMON_GENERATE;  // Start a new game
             }
             break;
     }

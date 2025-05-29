@@ -5,6 +5,7 @@
 #include "button.h"
 #include "spi.h"
 #include "uart.h"
+#include "adc.h"
 
 volatile uint8_t pb_debounced_state = 0xFF;
 static uint8_t count0 = 0;

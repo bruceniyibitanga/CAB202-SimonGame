@@ -70,14 +70,7 @@ static void uart_transmit_string(const char* str) {
     }
 }
 
-static void report_score(uint16_t score, uint8_t is_success) {
-    if (is_success) {
-        sprintf(tx_buffer, "SUCCESS\n%u\n", score);
-    } else {
-        sprintf(tx_buffer, "GAME OVER\n%u\n", score);
-    }
-    uart_transmit_string(tx_buffer);
-}
+
 
 // Frequency management functions
 static void increase_frequencies(void)
@@ -131,12 +124,10 @@ static uint8_t hexchar_to_int(char c)
 }
 
 ISR(USART0_RXC_vect)
-{
-    static Serial_State SERIAL_STATE = AWAITING_COMMAND;
+{   static Serial_State SERIAL_STATE = AWAITING_COMMAND;
     static uint8_t chars_received = 0;
     static uint16_t payload = 0;
     static uint8_t payload_valid = 1;
-    static char command_buffer[8] = {0};
     static uint32_t seed_value = 0;
 
     char rx_data = USART0.RXDATAL;
@@ -199,7 +190,7 @@ ISR(USART0_RXC_vect)
             if (++chars_received == 4)
             {
                 if (payload_valid)
-                    new_playback_delay = payload;
+                    playback_delay = payload;
                 SERIAL_STATE = AWAITING_COMMAND;
             }
         }

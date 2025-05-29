@@ -23,6 +23,7 @@ int main(void) {
 
     // Main game loop
     while (1) {
+        update_button_states();  // Update button states before simon task
         simon_task();
     }
 

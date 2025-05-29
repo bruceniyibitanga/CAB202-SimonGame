@@ -33,12 +33,10 @@ uint8_t adc_read()
 }
 
 
-float get_playback_delay()
+uint16_t get_potentiometer_delay()
 {
     uint8_t pot_value = adc_read();  // Get latest ADC result (0–255)
-
     uint8_t reversed_adc = 255 - pot_value;
-
-    // Linearly interpolate between 0.25 and 2.0 seconds
-    return 0.25 + ((float)reversed_adc / 255.0f) * (2.0f - 0.25f);
+    // Map 0..255 to 250..2000 ms
+    return 250 + ((uint32_t)reversed_adc * (2000 - 250)) / 255;
 }
