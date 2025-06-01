@@ -165,6 +165,8 @@ void simon_init(void) {
     sequence_index = 0;
     lfsr_pos = 0;
     lfsr_state = INITIAL_SEED;
+    // Update playback delay from potentiometer at start
+    playback_delay = get_potentiometer_delay();
     // Generate the initial 1-step sequence
     for (uint8_t i = 0; i < sequence_length; i++) {
         sequence[i] = get_next_step();
@@ -226,7 +228,7 @@ void state_play_on(void) {
 }
 
 void state_play_off(void) {
-    if (elapsed_time_in_milliseconds >= PLAYBACK_DELAY/2) {
+    if (elapsed_time_in_milliseconds >= (PLAYBACK_DELAY >> 1)) {
         sequence_index++;
         state = SIMON_GENERATE;
     }
@@ -305,8 +307,7 @@ void state_handle_input(void) {
     }
     
     // If pb_released is already 1 (from UART), skip waiting for physical release
-    if (pb_released) {
-        if (waiting_extra_delay) {
+    if (pb_released) {        if (waiting_extra_delay) {
             if (elapsed_time_in_milliseconds >= (PLAYBACK_DELAY >> 1)) {
                 stop_tone();
                 update_display(DISP_OFF, DISP_OFF);
@@ -405,15 +406,16 @@ void state_disp_score(void) {
     } else {
         score_to_display = sequence_length - 1; // Number of completed rounds
     }
-    display_two_digit_number(score_to_display);
-
-    if (elapsed_time_in_milliseconds >= (PLAYBACK_DELAY << 2)) { // Display score for 4x PLAYBACK_DELAY
+    display_two_digit_number(score_to_display);    if (elapsed_time_in_milliseconds >= (PLAYBACK_DELAY << 2)) { // Display score for 4x PLAYBACK_DELAY
         update_display(DISP_OFF, DISP_OFF);
         prepare_delay();
 
         // Reset game parameters for a new game
         sequence_length = 1; // New game starts with 1 step
         sequence_index = 0;
+        
+        // Update playback delay from potentiometer for new game
+        playback_delay = get_potentiometer_delay();
 
         // Reset LFSR to INITIAL_SEED and then advance it by lfsr_pos
         // lfsr_pos now holds the score of the game that just ended in failure.
