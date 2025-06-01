@@ -202,14 +202,11 @@ void state_generate(void) {
     if (sequence_index == 0) {
         playback_delay = get_potentiometer_delay();
     }
-
-    // Play current step in sequence
     if (sequence_index < sequence_length) {
         display_step_pattern(sequence[sequence_index]);
-        prepare_delay();
+        prepare_delay(); // Start timing as soon as tone/display ON
         state = SIMON_PLAY_ON;
     } else {
-        // All steps played, wait for user input
         sequence_index = 0;
         state = AWAITING_INPUT;
         pb_current = 0;
@@ -219,11 +216,10 @@ void state_generate(void) {
 }
 
 void state_play_on(void) {
-    // If the elapsed time is equal to or greater than the playback delay, then we want to stop the tone and turn display off.
     if (elapsed_time_in_milliseconds >= (PLAYBACK_DELAY / 2)) {
         stop_tone();
         update_display(DISP_OFF, DISP_OFF);
-        prepare_delay();
+        prepare_delay(); // Start timing as soon as tone/display OFF
         state = SIMON_PLAY_OFF;
     }
 }
