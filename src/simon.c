@@ -219,16 +219,17 @@ void state_generate(void) {
 }
 
 void state_play_on(void) {
-    if (elapsed_time_in_milliseconds >= PLAYBACK_DELAY) {
-        update_display(DISP_OFF, DISP_OFF);
+    // If the elapsed time is equal to or greater than the playback delay, then we want to stop the tone and turn display off.
+    if (elapsed_time_in_milliseconds >= (PLAYBACK_DELAY / 2)) {
         stop_tone();
+        update_display(DISP_OFF, DISP_OFF);
         prepare_delay();
         state = SIMON_PLAY_OFF;
     }
 }
 
 void state_play_off(void) {
-    if (elapsed_time_in_milliseconds >= (PLAYBACK_DELAY >> 1)) {
+    if (elapsed_time_in_milliseconds >= (PLAYBACK_DELAY / 2)) {
         sequence_index++;
         state = SIMON_GENERATE;
     }
@@ -283,13 +284,43 @@ void state_handle_input(void) {
         case 4: button_mask = PIN7_bm; break;
         default: break;
     }
-  // If pb_released is already 1 (from UART), skip waiting for physical release
-    if (pb_released) {        
+
+    // If button is still held
+    if (!pb_released) {
+        if (pb_rising_edge & button_mask) {
+            pb_released = 1;
+            if (elapsed_time_in_milliseconds < (PLAYBACK_DELAY / 2)) {
+                waiting_extra_delay = 1;
+                prepare_delay(); // Start waiting for the rest of 50% delay
+            } else {
+                stop_tone();
+                update_display(DISP_OFF, DISP_OFF);
+                // Evaluate input and transition
+                if ((pb_current - 1) == sequence[sequence_index]) {
+                    if (sequence_index < sequence_length - 1) {
+                        sequence_index++;
+                        state = AWAITING_INPUT;
+                    } else {
+                        update_display(DISP_SUCCESS, DISP_SUCCESS);
+                        prepare_delay();
+                        sequence_index = 0;
+                        state = SUCCESS;
+                    }
+                } else {
+                    update_display(DISP_FAIL, DISP_FAIL);
+                    prepare_delay();
+                    state = FAIL;
+                }
+            }
+        }
+    } else {
+        // Button has been released
         if (waiting_extra_delay) {
             if (elapsed_time_in_milliseconds >= (PLAYBACK_DELAY / 2)) {
                 stop_tone();
                 update_display(DISP_OFF, DISP_OFF);
                 waiting_extra_delay = 0;
+                // Evaluate input and transition
                 if ((pb_current - 1) == sequence[sequence_index]) {
                     if (sequence_index < sequence_length - 1) {
                         sequence_index++;
@@ -309,6 +340,7 @@ void state_handle_input(void) {
         } else if (elapsed_time_in_milliseconds >= PLAYBACK_DELAY) {
             stop_tone();
             update_display(DISP_OFF, DISP_OFF);
+            // Evaluate input and transition
             if ((pb_current - 1) == sequence[sequence_index]) {
                 if (sequence_index < sequence_length - 1) {
                     sequence_index++;
@@ -324,14 +356,6 @@ void state_handle_input(void) {
                 prepare_delay();
                 state = FAIL;
             }
-        }
-    }
-    // Otherwise, wait for physical button release
-    else if (!pb_released && (pb_rising_edge & button_mask)) {
-        pb_released = 1;
-        if (elapsed_time_in_milliseconds >= PLAYBACK_DELAY) {
-            prepare_delay();
-            waiting_extra_delay = 1;
         }
     }
 }
