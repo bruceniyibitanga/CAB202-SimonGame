@@ -41,7 +41,6 @@ void timer_init(void)
 void prepare_delay(void)
 {
     elapsed_time_in_milliseconds = 0; // Reset the elapsed time counter
-    playback_delay = get_potentiometer_delay(); // Reset playback delay
 }
 
 // ----------------------  1ms TIMER INTERRUPT  ------------------------
@@ -68,8 +67,6 @@ ISR(TCB1_INT_vect)
     
     // Update display
     swap_display_digit();
-
-    playback_delay = get_potentiometer_delay(); // Update playback delay from potentiometer
     
     // Clear interrupt flag
     TCB1.INTFLAGS = TCB_CAPT_bm;

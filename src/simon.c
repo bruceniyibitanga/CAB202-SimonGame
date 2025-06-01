@@ -196,6 +196,11 @@ void state_generate(void) {
     // - state_success (via add_new_sequence_step to extend the sequence)
     // - state_disp_score (for starting a new 1-step sequence after failure, offset from INITIAL_SEED by lfsr_pos)
 
+    // Update playback delay from potentiometer only when starting to play the sequence
+    if (sequence_index == 0) {
+        playback_delay = get_potentiometer_delay();
+    }
+
     // Play current step in sequence
     if (sequence_index < sequence_length) {
         display_step_pattern(sequence[sequence_index]);
@@ -236,8 +241,7 @@ void state_awaiting_input(void) {
         prepare_delay();
         uart_button_flag = 0;
         state = HANDLE_INPUT;
-    }
-    // Wait for physical button press
+    }    // Wait for physical button press
     else if (pb_falling_edge & PIN4_bm) {
         pb_current = 1;
         display_step_pattern(0);
@@ -277,6 +281,29 @@ void state_handle_input(void) {
         case 4: button_mask = PIN7_bm; break;
         default: break;
     }
+    
+    // Force buzzer off after 500ms regardless of button state
+    if (elapsed_time_in_milliseconds >= 500) {
+        stop_tone();
+        update_display(DISP_OFF, DISP_OFF);
+        if ((pb_current - 1) == sequence[sequence_index]) {
+            if (sequence_index < sequence_length - 1) {
+                sequence_index++;
+                state = AWAITING_INPUT;
+            } else {
+                update_display(DISP_SUCCESS, DISP_SUCCESS);
+                prepare_delay();
+                sequence_index = 0;
+                state = SUCCESS;
+            }
+        } else {
+            update_display(DISP_FAIL, DISP_FAIL);
+            prepare_delay();
+            state = FAIL;
+        }
+        return;
+    }
+    
     // If pb_released is already 1 (from UART), skip waiting for physical release
     if (pb_released) {
         if (waiting_extra_delay) {
@@ -368,15 +395,19 @@ void state_fail(void) {
 }
 
 void state_disp_score(void) {
-    // Display score (current sequence_length - 1, as this is after a fail)
-    // sequence_length here is the length of the sequence that just failed.
-    uint8_t score_to_display = 0;
-    if (sequence_length > 0) { // If they failed even a 1-step sequence, score is 0.
-        score_to_display = sequence_length - 1;
+    // Calculate score: number of completed rounds
+    // sequence_length represents the round that just failed
+    // Score = completed rounds = sequence_length - 1
+    // But if they failed on the very first step of the first round, score is 0
+    uint8_t score_to_display;
+    if (sequence_length <= 1) {
+        score_to_display = 0; // Failed on first round
+    } else {
+        score_to_display = sequence_length - 1; // Number of completed rounds
     }
     display_two_digit_number(score_to_display);
 
-    if (elapsed_time_in_milliseconds >= (PLAYBACK_DELAY << 3)) { // Display score for a period
+    if (elapsed_time_in_milliseconds >= (PLAYBACK_DELAY << 2)) { // Display score for 4x PLAYBACK_DELAY
         update_display(DISP_OFF, DISP_OFF);
         prepare_delay();
 
