@@ -283,32 +283,10 @@ void state_handle_input(void) {
         case 4: button_mask = PIN7_bm; break;
         default: break;
     }
-    
-    // Force buzzer off after 500ms regardless of button state
-    if (elapsed_time_in_milliseconds >= 500) {
-        stop_tone();
-        update_display(DISP_OFF, DISP_OFF);
-        if ((pb_current - 1) == sequence[sequence_index]) {
-            if (sequence_index < sequence_length - 1) {
-                sequence_index++;
-                state = AWAITING_INPUT;
-            } else {
-                update_display(DISP_SUCCESS, DISP_SUCCESS);
-                prepare_delay();
-                sequence_index = 0;
-                state = SUCCESS;
-            }
-        } else {
-            update_display(DISP_FAIL, DISP_FAIL);
-            prepare_delay();
-            state = FAIL;
-        }
-        return;
-    }
-    
-    // If pb_released is already 1 (from UART), skip waiting for physical release
-    if (pb_released) {        if (waiting_extra_delay) {
-            if (elapsed_time_in_milliseconds >= (PLAYBACK_DELAY >> 1)) {
+  // If pb_released is already 1 (from UART), skip waiting for physical release
+    if (pb_released) {        
+        if (waiting_extra_delay) {
+            if (elapsed_time_in_milliseconds >= (PLAYBACK_DELAY / 2)) {
                 stop_tone();
                 update_display(DISP_OFF, DISP_OFF);
                 waiting_extra_delay = 0;
@@ -365,7 +343,7 @@ void state_evaluate_input(void) {
 }
 
 void state_success(void) {
-    // Success state - display success pattern for 1 second then continue
+    
     if (elapsed_time_in_milliseconds >= PLAYBACK_DELAY * 2) {
         update_display(DISP_OFF, DISP_OFF);
         prepare_delay();
@@ -377,7 +355,6 @@ void state_success(void) {
 }
 
 void state_fail(void) {
-    // Failure state - display failure pattern for 1 second then show score
     if (elapsed_time_in_milliseconds >= (PLAYBACK_DELAY << 1)) {
         update_display(DISP_OFF, DISP_OFF);
         prepare_delay();
