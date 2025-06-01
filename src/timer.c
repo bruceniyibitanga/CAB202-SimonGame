@@ -74,4 +74,3 @@ ISR(TCB1_INT_vect)
     // Clear interrupt flag
     TCB1.INTFLAGS = TCB_CAPT_bm;
 }
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        

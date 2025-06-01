@@ -20,10 +20,6 @@ typedef enum {
     DISP_SCORE       // Display final score
 } simon_state_t;
 
-// Display patterns for success/fail using correct segment macros
-#define DISP_SUCCESS (DISP_SEG_A & DISP_SEG_B & DISP_SEG_F & DISP_SEG_G)  // Letter P
-#define DISP_FAIL (DISP_SEG_A & DISP_SEG_E & DISP_SEG_F & DISP_SEG_G)     // Letter F
-
 // Function prototypes
 void simon_init(void);
 void simon_task(void);

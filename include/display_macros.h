@@ -10,7 +10,7 @@
 #define DIGIT_6 0b0010000
 #define DIGIT_7 0b1001011
 #define DIGIT_8 0b0000000
-#define DIGIT_9 0b0000001
+#define DIGIT_9 (DISP_SEG_A | DISP_SEG_B | DISP_SEG_C | DISP_SEG_D | DISP_SEG_F | DISP_SEG_G)
 
 #define DISP_SEG_F 0b00111111
 #define DISP_SEG_A 0b01011111
@@ -27,5 +27,10 @@
 #define DISP_LHS 0b10000000  // Left-hand side digit selector (bit 7)
 
 #define DISP_DASH DISP_SEG_G
+
+// Additional display macros
+#define DISP_SUCCESS 0x00 // All segments ON for success
+#define DISP_FAIL DISP_SEG_G
+#define DISP_UNDERSCORE DISP_SEG_D
 
 #endif

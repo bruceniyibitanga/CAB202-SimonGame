@@ -1,9 +1,12 @@
+
 #include <avr/interrupt.h>
 #include <stdint.h>
 #include <avr/io.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include "timer.h"
 #include "buzzer.h"
+#include "simon.h"
 
 // ----------------------  INITIALISATION  ----------------------
 
@@ -38,10 +41,10 @@ void uart_putnum(uint16_t num) {
 // ----------------------  MAIN UART LOGIC  ----------------------
 
 // Base frequencies for student number 32
-#define BASE_FREQ_A 128
-#define BASE_FREQ_CSHARP 108
-#define BASE_FREQ_EHIGH 152
-#define BASE_FREQ_ELOW 51
+#define BASE_FREQ_A 432
+#define BASE_FREQ_CSHARP 272
+#define BASE_FREQ_EHIGH 324
+#define BASE_FREQ_ELOW 162
 
 // Current frequencies
 volatile uint16_t current_freq_a = BASE_FREQ_A;
@@ -63,22 +66,6 @@ volatile uint8_t uart_reset = 0;
 volatile uint32_t new_seed = 0;
 volatile uint8_t update_seed = 0;
 
-// Buffer for transmitting UART strings
-static char tx_buffer[32];
-
-static void uart_transmit_string(const char* str) {
-    // Wait for any previous transmission to complete
-    while (!(USART0.STATUS & USART_DREIF_bm));
-    
-    // Send each character
-    while (*str) {
-        USART0.TXDATAL = *str++;
-        while (!(USART0.STATUS & USART_DREIF_bm));
-    }
-}
-
-
-
 // Frequency management functions
 static void increase_frequencies(void)
 {
@@ -90,10 +77,10 @@ static void increase_frequencies(void)
     }
 
     // Double all frequencies
-    current_freq_ehigh *= 2;
-    current_freq_csharp *= 2;
-    current_freq_a *= 2;
-    current_freq_elow *= 2;
+    current_freq_ehigh = current_freq_ehigh << 1;
+    current_freq_csharp = current_freq_csharp << 1;
+    current_freq_a = current_freq_a << 1;
+    current_freq_elow = current_freq_elow << 1;
 }
 
 static void decrease_frequencies(void)
@@ -106,10 +93,10 @@ static void decrease_frequencies(void)
     }
 
     // Halve all frequencies
-    current_freq_ehigh /= 2;
-    current_freq_csharp /= 2;
-    current_freq_a /= 2;
-    current_freq_elow /= 2;
+    current_freq_ehigh = current_freq_ehigh >> 1;
+    current_freq_csharp = current_freq_csharp >> 1;
+    current_freq_a = current_freq_a >> 1;
+    current_freq_elow = current_freq_elow >> 1;
 }
 
 static void reset_frequencies(void)
@@ -136,8 +123,6 @@ volatile uint8_t uart_button_flag = 0;
 ISR(USART0_RXC_vect)
 {   static Serial_State SERIAL_STATE = AWAITING_COMMAND;
     static uint8_t chars_received = 0;
-    static uint16_t payload = 0;
-    static uint8_t payload_valid = 1;
     static uint32_t seed_value = 0;
 
     char rx_data = USART0.RXDATAL;
@@ -178,10 +163,12 @@ ISR(USART0_RXC_vect)
         // Handle delay command
         else if (rx_data == 'd')
         {
-            payload_valid = 1;
             chars_received = 0;
-            payload = 0;
             SERIAL_STATE = AWAITING_PAYLOAD;
+        }
+        // Add UART command to print high scores (e.g. 'h')
+        else if (rx_data == 'h') {
+            // uart_print_high_scores();
         }
         break;
 

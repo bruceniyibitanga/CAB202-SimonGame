@@ -41,4 +41,3 @@ ISR(SPI0_INT_vect) {
 
     SPI0.INTFLAGS = SPI_IF_bm;
 }
-

@@ -54,22 +54,23 @@ void play_tone(uint8_t tone)
 {
     if (tone > 3) return; // Validate tone number
 
-    // Base periods for each note at octave 0
-    // F_CPU/freq gives us the period in clock cycles
-    static const uint16_t base_periods[4] = {
-        F_CPU/324,  // E(high)  = 1029
-        F_CPU/372,  // C#       = 896
-        F_CPU/432,  // A        = 772
-        F_CPU/216   // E(low)   = 1543
-    };
-
-    // Calculate actual period based on octave
-    uint16_t period = base_periods[tone] >> octave;
-    
-    // Set PWM period and duty cycle (50%)
+    extern volatile uint16_t current_freq_ehigh;
+    extern volatile uint16_t current_freq_csharp;
+    extern volatile uint16_t current_freq_a;
+    extern volatile uint16_t current_freq_elow;
+    uint16_t freq = 0;
+    switch (tone) {
+        case 0: freq = current_freq_ehigh; break;
+        case 1: freq = current_freq_csharp; break;
+        case 2: freq = current_freq_a; break;
+        case 3: freq = current_freq_elow; break;
+        default: return;
+    }
+    if (freq < 40) freq = 40;
+    if (freq > 20000) freq = 20000;
+    uint16_t period = F_CPU / freq;
     TCA0.SINGLE.PERBUF = period;
     TCA0.SINGLE.CMP0BUF = period >> 1;
-
     selected_tone = tone;
     is_playing = 1;
 }

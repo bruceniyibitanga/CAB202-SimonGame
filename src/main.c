@@ -20,7 +20,6 @@ int main(void) {
     display_init();
     simon_init();
     sei();
-    uart_puts("Starting Simon Game Before Loop...\n");
 
     // Main game loop
     while (1) {

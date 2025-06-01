@@ -23,6 +23,17 @@ static uint8_t lfsr_pos = 0; // Track current position in LFSR sequence
 // Store sequence steps
 static uint8_t sequence[32];  // Array to store the sequence
 
+// Leaderboard
+#define MAX_NAME_LEN 20
+
+typedef struct {
+    char name[MAX_NAME_LEN + 1]; // +1 for null terminator
+    uint8_t score;
+} leaderboard_entry_t;
+
+static leaderboard_entry_t leaderboard[5];
+static uint8_t leaderboard_count = 0;
+
 // LFSR configuration
 #define LFSR_MASK 0xE2025CAB
 #define INITIAL_SEED 0x12236632  // Student number
@@ -87,6 +98,40 @@ static void reset_lfsr(void) {
     lfsr_state = INITIAL_SEED;
 }
 
+void sort_leaderboard() {
+    for (uint8_t i = 0; i < leaderboard_count; i++) {
+        for (uint8_t j = i + 1; j < leaderboard_count; j++) {
+            if (leaderboard[i].score < leaderboard[j].score) {
+                leaderboard_entry_t temp = leaderboard[i];
+                leaderboard[i] = leaderboard[j];
+                leaderboard[j] = temp;
+            }
+        }
+    }
+}
+
+// Returns true if the score is in the top 5
+bool is_player_in_top_5(uint8_t score) {
+    if (leaderboard_count < 5) return true;
+    return score > leaderboard[leaderboard_count - 1].score;
+}
+
+// Adds a player to the leaderboard if eligible
+void add_player_to_leaderboard(const char* name, uint8_t score) {
+    if (!is_player_in_top_5(score)) return;
+    if (leaderboard_count < 5) {
+        leaderboard[leaderboard_count].score = score;
+        strncpy(leaderboard[leaderboard_count].name, name, MAX_NAME_LEN);
+        leaderboard[leaderboard_count].name[MAX_NAME_LEN] = '\0';
+        leaderboard_count++;
+    } else {
+        leaderboard[leaderboard_count - 1].score = score;
+        strncpy(leaderboard[leaderboard_count - 1].name, name, MAX_NAME_LEN);
+        leaderboard[leaderboard_count - 1].name[MAX_NAME_LEN] = '\0';
+    }
+    sort_leaderboard();
+}
+
 // Display pattern and play tone for a step
 static void display_step_pattern(uint8_t step) {
     switch(step) {
@@ -116,11 +161,11 @@ static bool waiting_extra_delay = 0;
 
 void simon_init(void) {
     state = SIMON_GENERATE;
-    sequence_length = 4;  // Start with 4 steps
+    sequence_length = 1;  // Start with 1 step
     sequence_index = 0;
     lfsr_pos = 0;
     lfsr_state = INITIAL_SEED;
-    // Generate the initial 4-step sequence
+    // Generate the initial 1-step sequence
     for (uint8_t i = 0; i < sequence_length; i++) {
         sequence[i] = get_next_step();
     }
@@ -146,11 +191,11 @@ void simon_task(void) {
 // =========================
 
 void state_generate(void) {
-    // Only add a new step when we've successfully completed the previous sequence
-    if (sequence_index == 0 && sequence_length == 4 - 1 && state != DISP_SCORE) {
-        sequence[sequence_length] = get_next_step();
-        sequence_length++;
-    }
+    // Sequence generation/extension is now handled in:
+    // - simon_init (for the very first step)
+    // - state_success (via add_new_sequence_step to extend the sequence)
+    // - state_disp_score (for starting a new 1-step sequence after failure, offset from INITIAL_SEED by lfsr_pos)
+
     // Play current step in sequence
     if (sequence_index < sequence_length) {
         display_step_pattern(sequence[sequence_index]);
@@ -308,32 +353,45 @@ void state_fail(void) {
     if (elapsed_time_in_milliseconds >= (PLAYBACK_DELAY << 1)) {
         update_display(DISP_OFF, DISP_OFF);
         prepare_delay();
-        // On fail, set lfsr_pos to the failed step (sequence_length - 1)
-        if (sequence_length > 4) {
-            lfsr_pos = sequence_length - 1;
+        // On fail, set lfsr_pos to the current score (sequence_length - 1 before it's reset)
+        // This lfsr_pos will be used to offset the LFSR from INITIAL_SEED for the next game.
+        // Note: sequence_length here is the length of the failed sequence.
+        // Score is typically sequence_length - 1.
+        // If sequence_length was 1 (first step failed), score is 0.
+        if (sequence_length > 0) { // Avoid underflow if sequence_length was 0 (shouldn't happen)
+             lfsr_pos = sequence_length - 1;
         } else {
-            lfsr_pos = 0;
+             lfsr_pos = 0;
         }
         state = DISP_SCORE;
     }
 }
 
 void state_disp_score(void) {
-    // Display score (sequence_length - 1) for 3 seconds
-    display_two_digit_number(sequence_length - 1);
-    if (elapsed_time_in_milliseconds >= (PLAYBACK_DELAY << 3)) {
+    // Display score (current sequence_length - 1, as this is after a fail)
+    // sequence_length here is the length of the sequence that just failed.
+    uint8_t score_to_display = 0;
+    if (sequence_length > 0) { // If they failed even a 1-step sequence, score is 0.
+        score_to_display = sequence_length - 1;
+    }
+    display_two_digit_number(score_to_display);
+
+    if (elapsed_time_in_milliseconds >= (PLAYBACK_DELAY << 3)) { // Display score for a period
         update_display(DISP_OFF, DISP_OFF);
         prepare_delay();
-        // Reset game parameters
-        sequence_length = 4;
+
+        // Reset game parameters for a new game
+        sequence_length = 1; // New game starts with 1 step
         sequence_index = 0;
-        // Reset LFSR to initial seed for new game
-        reset_lfsr();
-        // Advance LFSR to lfsr_pos
+
+        // Reset LFSR to INITIAL_SEED and then advance it by lfsr_pos
+        // lfsr_pos now holds the score of the game that just ended in failure.
+        reset_lfsr(); // lfsr_state = INITIAL_SEED;
         for (uint8_t i = 0; i < lfsr_pos; i++) {
-            get_next_step();
+            (void)get_next_step(); // Advance LFSR, discard result
         }
-        // Generate new 4-step sequence from current LFSR position
+
+        // Generate new 1-step sequence from the current (offset) LFSR state
         for (uint8_t i = 0; i < sequence_length; i++) {
             sequence[i] = get_next_step();
         }
