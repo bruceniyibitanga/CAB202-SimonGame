@@ -395,13 +395,9 @@ void state_fail(void) {
 void state_disp_score(void) {
     static uint8_t first_entry = 1;
     if (first_entry) {
-        uint8_t score_to_display;
-        if (sequence_length <= 1) {
-            score_to_display = 0;
-        } else {
-            score_to_display = sequence_length - 1;
-        }
-        display_two_digit_number(score_to_display);        prepare_delay(); // Reset timer when first entering DISP_SCORE state
+        uint8_t score_to_display = sequence_length;
+        display_two_digit_number(score_to_display);
+        prepare_delay(); // Reset timer when first entering DISP_SCORE state
         first_entry = 0;
     }
     if (elapsed_time_in_milliseconds >= PLAYBACK_DELAY) {
