@@ -164,8 +164,7 @@ void simon_init(void) {
     sequence_length = 1;  // Start with 1 step
     sequence_index = 0;
     lfsr_pos = 0;
-    lfsr_state = INITIAL_SEED;
-    // Update playback delay from potentiometer at start
+    lfsr_state = INITIAL_SEED;    // Update playback delay from potentiometer at start
     playback_delay = get_potentiometer_delay();
     // Generate the initial 1-step sequence
     for (uint8_t i = 0; i < sequence_length; i++) {
@@ -197,9 +196,7 @@ void state_generate(void) {
     // Sequence generation/extension is now handled in:
     // - simon_init (for the very first step)
     // - state_success (via add_new_sequence_step to extend the sequence)
-    // - state_disp_score (for starting a new 1-step sequence after failure, offset from INITIAL_SEED by lfsr_pos)
-
-    // Update playback delay from potentiometer only when starting to play the sequence
+    // - state_disp_score (for starting a new 1-step sequence after failure, offset from INITIAL_SEED by lfsr_pos)    // Update playback delay from potentiometer only when starting to play the sequence
     if (sequence_index == 0) {
         playback_delay = get_potentiometer_delay();
     }
@@ -217,7 +214,7 @@ void state_generate(void) {
 }
 
 void state_play_on(void) {
-    if (elapsed_time_in_milliseconds >= (PLAYBACK_DELAY / 2)) {
+    if (elapsed_time_in_milliseconds >= (PLAYBACK_DELAY >> 1)) {
         stop_tone();
         update_display(DISP_OFF, DISP_OFF);
         prepare_delay(); // Reset timer as soon as tone/display OFF
@@ -226,7 +223,7 @@ void state_play_on(void) {
 }
 
 void state_play_off(void) {
-    if (elapsed_time_in_milliseconds >= (PLAYBACK_DELAY / 2)) {
+    if (elapsed_time_in_milliseconds >= (PLAYBACK_DELAY >> 1)) {
         sequence_index++;
         prepare_delay(); // Reset timer before next state
         state = SIMON_GENERATE;
@@ -238,9 +235,8 @@ void state_awaiting_input(void) {
     if (uart_button_flag) {
         pb_current = uart_button_flag;
         display_step_pattern(pb_current - 1);
-        pb_released = 1;
+        prepare_delay(); // Reset timer as soon as user input display/tone ON        pb_released = 1;
         waiting_extra_delay = 1; // UART input should wait exactly 50% of PLAYBACK_DELAY
-        prepare_delay(); // Reset timer as soon as user input display/tone ON
         uart_button_flag = 0;
         state = HANDLE_INPUT;
     } else if (pb_falling_edge & PIN4_bm) {
@@ -281,8 +277,7 @@ void state_handle_input(void) {
     }    // If button is still held
     if (!pb_released) {
         if (pb_rising_edge & button_mask) {
-            pb_released = 1;
-            if (elapsed_time_in_milliseconds < (PLAYBACK_DELAY / 2)) {
+            pb_released = 1;            if (elapsed_time_in_milliseconds < (PLAYBACK_DELAY >> 1)) {
                 waiting_extra_delay = 1;
                 prepare_delay(); // Reset timer for extra delay after early release
             } else {
@@ -306,11 +301,10 @@ void state_handle_input(void) {
                     state = FAIL;
                 }
             }
-        }
-    }else {
+        }    }else {
         // Button has been released
         if (waiting_extra_delay) {
-            if (elapsed_time_in_milliseconds >= (PLAYBACK_DELAY / 2)) {
+            if (elapsed_time_in_milliseconds >= (PLAYBACK_DELAY >> 1)) {
                 stop_tone();
                 update_display(DISP_OFF, DISP_OFF);
                 prepare_delay(); // Reset timer for next state
@@ -407,8 +401,7 @@ void state_disp_score(void) {
         } else {
             score_to_display = sequence_length - 1;
         }
-        display_two_digit_number(score_to_display);
-        prepare_delay(); // Reset timer when first entering DISP_SCORE state
+        display_two_digit_number(score_to_display);        prepare_delay(); // Reset timer when first entering DISP_SCORE state
         first_entry = 0;
     }
     if (elapsed_time_in_milliseconds >= PLAYBACK_DELAY) {
@@ -422,13 +415,11 @@ void state_disp_score(void) {
 void state_disp_blank(void) {
     static uint8_t first_entry = 1;
     if (first_entry) {
-        update_display(DISP_OFF, DISP_OFF);
-        prepare_delay(); // Reset timer when first entering DISP_BLANK state
+        update_display(DISP_OFF, DISP_OFF);        prepare_delay(); // Reset timer when first entering DISP_BLANK state
         first_entry = 0;
     }
     if (elapsed_time_in_milliseconds >= PLAYBACK_DELAY) {
-        prepare_delay();
-        // Reset game parameters for a new game
+        prepare_delay();        // Reset game parameters for a new game
         sequence_length = 1;
         sequence_index = 0;
         playback_delay = get_potentiometer_delay();
