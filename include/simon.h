@@ -15,9 +15,10 @@ typedef enum {
     AWAITING_INPUT,    // Wait for button press
     HANDLE_INPUT,      // Process button press
     EVALUATE_INPUT,    // Check if input matches sequence
-    SUCCESS,          // Show success pattern
-    FAIL,            // Show failure pattern
-    DISP_SCORE       // Display final score
+    SUCCESS,           // Show success pattern
+    FAIL,              // Show failure pattern
+    DISP_SCORE,        // Display final score
+    DISP_BLANK         // Display blank after score before new game
 } simon_state_t;
 
 // Function prototypes

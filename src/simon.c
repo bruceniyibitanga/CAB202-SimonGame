@@ -185,6 +185,7 @@ void simon_task(void) {
         case SUCCESS: state_success(); break;
         case FAIL: state_fail(); break;
         case DISP_SCORE: state_disp_score(); break;
+        case DISP_BLANK: state_disp_blank(); break;
     }
 }
 
@@ -204,7 +205,7 @@ void state_generate(void) {
     }
     if (sequence_index < sequence_length) {
         display_step_pattern(sequence[sequence_index]);
-        prepare_delay(); // Start timing as soon as tone/display ON
+        prepare_delay(); // Reset timer as soon as tone/display ON
         state = SIMON_PLAY_ON;
     } else {
         sequence_index = 0;
@@ -219,7 +220,7 @@ void state_play_on(void) {
     if (elapsed_time_in_milliseconds >= (PLAYBACK_DELAY / 2)) {
         stop_tone();
         update_display(DISP_OFF, DISP_OFF);
-        prepare_delay(); // Start timing as soon as tone/display OFF
+        prepare_delay(); // Reset timer as soon as tone/display OFF
         state = SIMON_PLAY_OFF;
     }
 }
@@ -236,33 +237,29 @@ void state_awaiting_input(void) {
     if (uart_button_flag) {
         pb_current = uart_button_flag;
         display_step_pattern(pb_current - 1);
-        pb_released = 1; // Simulate instant release
-        prepare_delay();
+        pb_released = 1;
+        prepare_delay(); // Reset timer as soon as user input display/tone ON
         uart_button_flag = 0;
         state = HANDLE_INPUT;
-    }    // Wait for physical button press
-    else if (pb_falling_edge & PIN4_bm) {
+    } else if (pb_falling_edge & PIN4_bm) {
         pb_current = 1;
         display_step_pattern(0);
         pb_released = 0;
         prepare_delay();
         state = HANDLE_INPUT;
-    }
-    else if (pb_falling_edge & PIN5_bm) {
+    } else if (pb_falling_edge & PIN5_bm) {
         pb_current = 2;
         display_step_pattern(1);
         pb_released = 0;
         prepare_delay();
         state = HANDLE_INPUT;
-    }
-    else if (pb_falling_edge & PIN6_bm) {
+    } else if (pb_falling_edge & PIN6_bm) {
         pb_current = 3;
         display_step_pattern(2);
         pb_released = 0;
         prepare_delay();
         state = HANDLE_INPUT;
-    }
-    else if (pb_falling_edge & PIN7_bm) {
+    } else if (pb_falling_edge & PIN7_bm) {
         pb_current = 4;
         display_step_pattern(3);
         pb_released = 0;
@@ -280,17 +277,17 @@ void state_handle_input(void) {
         case 4: button_mask = PIN7_bm; break;
         default: break;
     }
-
     // If button is still held
     if (!pb_released) {
         if (pb_rising_edge & button_mask) {
             pb_released = 1;
             if (elapsed_time_in_milliseconds < (PLAYBACK_DELAY / 2)) {
                 waiting_extra_delay = 1;
-                prepare_delay(); // Start waiting for the rest of 50% delay
+                prepare_delay(); // Reset timer for extra delay after early release
             } else {
                 stop_tone();
                 update_display(DISP_OFF, DISP_OFF);
+                prepare_delay(); // Reset timer for next state
                 // Evaluate input and transition
                 if ((pb_current - 1) == sequence[sequence_index]) {
                     if (sequence_index < sequence_length - 1) {
@@ -315,6 +312,7 @@ void state_handle_input(void) {
             if (elapsed_time_in_milliseconds >= (PLAYBACK_DELAY / 2)) {
                 stop_tone();
                 update_display(DISP_OFF, DISP_OFF);
+                prepare_delay(); // Reset timer for next state
                 waiting_extra_delay = 0;
                 // Evaluate input and transition
                 if ((pb_current - 1) == sequence[sequence_index]) {
@@ -336,6 +334,7 @@ void state_handle_input(void) {
         } else if (elapsed_time_in_milliseconds >= PLAYBACK_DELAY) {
             stop_tone();
             update_display(DISP_OFF, DISP_OFF);
+            prepare_delay(); // Reset timer for next state
             // Evaluate input and transition
             if ((pb_current - 1) == sequence[sequence_index]) {
                 if (sequence_index < sequence_length - 1) {
@@ -363,68 +362,59 @@ void state_evaluate_input(void) {
 }
 
 void state_success(void) {
-    
     if (elapsed_time_in_milliseconds >= PLAYBACK_DELAY * 2) {
         update_display(DISP_OFF, DISP_OFF);
         prepare_delay();
-        add_new_sequence_step(); // Add a new step after a successful round
-        lfsr_pos++; // Move LFSR position forward
+        add_new_sequence_step();
+        lfsr_pos++;
         sequence_index = 0;
         state = SIMON_GENERATE;
     }
 }
 
 void state_fail(void) {
-    if (elapsed_time_in_milliseconds >= (PLAYBACK_DELAY << 1)) {
+    if (elapsed_time_in_milliseconds >= PLAYBACK_DELAY) {
         update_display(DISP_OFF, DISP_OFF);
         prepare_delay();
-        // On fail, set lfsr_pos to the current score (sequence_length - 1 before it's reset)
-        // This lfsr_pos will be used to offset the LFSR from INITIAL_SEED for the next game.
-        // Note: sequence_length here is the length of the failed sequence.
-        // Score is typically sequence_length - 1.
-        // If sequence_length was 1 (first step failed), score is 0.
-        if (sequence_length > 0) { // Avoid underflow if sequence_length was 0 (shouldn't happen)
-             lfsr_pos = sequence_length - 1;
+        if (sequence_length > 0) {
+            lfsr_pos = sequence_length - 1;
         } else {
-             lfsr_pos = 0;
+            lfsr_pos = 0;
         }
         state = DISP_SCORE;
     }
 }
 
 void state_disp_score(void) {
-    // Calculate score: number of completed rounds
-    // sequence_length represents the round that just failed
-    // Score = completed rounds = sequence_length - 1
-    // But if they failed on the very first step of the first round, score is 0
     uint8_t score_to_display;
     if (sequence_length <= 1) {
-        score_to_display = 0; // Failed on first round
+        score_to_display = 0;
     } else {
-        score_to_display = sequence_length - 1; // Number of completed rounds
+        score_to_display = sequence_length - 1;
     }
-    display_two_digit_number(score_to_display);    if (elapsed_time_in_milliseconds >= (PLAYBACK_DELAY << 2)) { // Display score for 4x PLAYBACK_DELAY
+    display_two_digit_number(score_to_display);
+    if (elapsed_time_in_milliseconds >= PLAYBACK_DELAY) {
         update_display(DISP_OFF, DISP_OFF);
         prepare_delay();
+        state = DISP_BLANK;
+    }
+}
 
+void state_disp_blank(void) {
+    update_display(DISP_OFF, DISP_OFF);
+    if (elapsed_time_in_milliseconds >= PLAYBACK_DELAY) {
+        prepare_delay();
         // Reset game parameters for a new game
-        sequence_length = 1; // New game starts with 1 step
+        sequence_length = 1;
         sequence_index = 0;
-        
-        // Update playback delay from potentiometer for new game
         playback_delay = get_potentiometer_delay();
-
-        // Reset LFSR to INITIAL_SEED and then advance it by lfsr_pos
-        // lfsr_pos now holds the score of the game that just ended in failure.
-        reset_lfsr(); // lfsr_state = INITIAL_SEED;
+        reset_lfsr();
         for (uint8_t i = 0; i < lfsr_pos; i++) {
-            (void)get_next_step(); // Advance LFSR, discard result
+            (void)get_next_step();
         }
-
-        // Generate new 1-step sequence from the current (offset) LFSR state
         for (uint8_t i = 0; i < sequence_length; i++) {
             sequence[i] = get_next_step();
         }
-        state = SIMON_GENERATE;  // Start a new game
+        state = SIMON_GENERATE;
     }
 }
