@@ -239,6 +239,7 @@ void state_awaiting_input(void) {
         pb_current = uart_button_flag;
         display_step_pattern(pb_current - 1);
         pb_released = 1;
+        waiting_extra_delay = 1; // UART input should wait exactly 50% of PLAYBACK_DELAY
         prepare_delay(); // Reset timer as soon as user input display/tone ON
         uart_button_flag = 0;
         state = HANDLE_INPUT;
@@ -277,8 +278,7 @@ void state_handle_input(void) {
         case 3: button_mask = PIN6_bm; break;
         case 4: button_mask = PIN7_bm; break;
         default: break;
-    }
-    // If button is still held
+    }    // If button is still held
     if (!pb_released) {
         if (pb_rising_edge & button_mask) {
             pb_released = 1;
@@ -307,7 +307,7 @@ void state_handle_input(void) {
                 }
             }
         }
-    } else {
+    }else {
         // Button has been released
         if (waiting_extra_delay) {
             if (elapsed_time_in_milliseconds >= (PLAYBACK_DELAY / 2)) {
