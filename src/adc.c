@@ -35,9 +35,8 @@ uint8_t adc_read()
 uint16_t get_potentiometer_delay(void)
 {
     uint8_t pot_value = adc_read();
-    // Map potentiometer value (0-255) to range 125ms - 2000ms
-    // uint16_t value = 125 + ((uint32_t)pot_value * (2000 - 125)) / 255; // OLD MAPPING
-    uint16_t value = 125 + ((uint32_t)pot_value * (2000 - 125)) / 255;
+    // Map potentiometer value (0-255) to range 250ms - 2000ms
+    uint16_t value = 250 + ((uint32_t)pot_value * (2000 - 250)) / 255;
     return value; // Return the calculated delay in milliseconds
 
 }
