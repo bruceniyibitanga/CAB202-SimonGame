@@ -228,6 +228,7 @@ void state_play_on(void) {
 void state_play_off(void) {
     if (elapsed_time_in_milliseconds >= (PLAYBACK_DELAY / 2)) {
         sequence_index++;
+        prepare_delay(); // Reset timer before next state
         state = SIMON_GENERATE;
     }
 }
@@ -362,17 +363,28 @@ void state_evaluate_input(void) {
 }
 
 void state_success(void) {
-    if (elapsed_time_in_milliseconds >= PLAYBACK_DELAY * 2) {
+    static uint8_t first_entry = 1;
+    if (first_entry) {
+        prepare_delay(); // Reset timer when first entering SUCCESS state
+        first_entry = 0;
+    }
+    if (elapsed_time_in_milliseconds >= PLAYBACK_DELAY) {
         update_display(DISP_OFF, DISP_OFF);
         prepare_delay();
         add_new_sequence_step();
         lfsr_pos++;
         sequence_index = 0;
+        first_entry = 1; // Reset for next time
         state = SIMON_GENERATE;
     }
 }
 
 void state_fail(void) {
+    static uint8_t first_entry = 1;
+    if (first_entry) {
+        prepare_delay(); // Reset timer when first entering FAIL state
+        first_entry = 0;
+    }
     if (elapsed_time_in_milliseconds >= PLAYBACK_DELAY) {
         update_display(DISP_OFF, DISP_OFF);
         prepare_delay();
@@ -381,27 +393,39 @@ void state_fail(void) {
         } else {
             lfsr_pos = 0;
         }
+        first_entry = 1; // Reset for next time
         state = DISP_SCORE;
     }
 }
 
 void state_disp_score(void) {
-    uint8_t score_to_display;
-    if (sequence_length <= 1) {
-        score_to_display = 0;
-    } else {
-        score_to_display = sequence_length - 1;
+    static uint8_t first_entry = 1;
+    if (first_entry) {
+        uint8_t score_to_display;
+        if (sequence_length <= 1) {
+            score_to_display = 0;
+        } else {
+            score_to_display = sequence_length - 1;
+        }
+        display_two_digit_number(score_to_display);
+        prepare_delay(); // Reset timer when first entering DISP_SCORE state
+        first_entry = 0;
     }
-    display_two_digit_number(score_to_display);
     if (elapsed_time_in_milliseconds >= PLAYBACK_DELAY) {
         update_display(DISP_OFF, DISP_OFF);
         prepare_delay();
+        first_entry = 1; // Reset for next time
         state = DISP_BLANK;
     }
 }
 
 void state_disp_blank(void) {
-    update_display(DISP_OFF, DISP_OFF);
+    static uint8_t first_entry = 1;
+    if (first_entry) {
+        update_display(DISP_OFF, DISP_OFF);
+        prepare_delay(); // Reset timer when first entering DISP_BLANK state
+        first_entry = 0;
+    }
     if (elapsed_time_in_milliseconds >= PLAYBACK_DELAY) {
         prepare_delay();
         // Reset game parameters for a new game
@@ -415,6 +439,7 @@ void state_disp_blank(void) {
         for (uint8_t i = 0; i < sequence_length; i++) {
             sequence[i] = get_next_step();
         }
+        first_entry = 1; // Reset for next time
         state = SIMON_GENERATE;
     }
 }
