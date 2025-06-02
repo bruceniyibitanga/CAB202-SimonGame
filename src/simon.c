@@ -196,15 +196,12 @@ void state_generate(void) {
     // Always start from game_seed for cumulative sequence
     simon_play_index = 0;
     lfsr_state = game_seed;
+    // Always update delay at the start of every round
+    playback_delay = get_potentiometer_delay();
     prepare_delay();
     simon_step = get_next_step();
     display_step_pattern(simon_step);
     state = SIMON_PLAY_ON;
-    if(round_length == 1){
-        // This will ensure that the playback delay is set to the potentionmeter value at the start of the game
-        // Or at least at every new game round.
-        playback_delay = get_potentiometer_delay();
-    }
 }
 
 void state_play_on(void) {
@@ -340,6 +337,7 @@ void state_success(void) {
 void state_fail(void) {
     static uint8_t first_entry = 1;
     if (first_entry) {
+        prepare_delay();
         first_entry = 0;
     }
     if (elapsed_time_in_milliseconds >= PLAYBACK_DELAY) {
@@ -351,7 +349,7 @@ void state_fail(void) {
             get_next_step();
         }
         game_seed = lfsr_state;
-        score_to_display = (round_length > 1) ? (round_length - 1) : 0;
+        score_to_display = round_length;
         round_length = 1;
         first_entry = 1;
         prepare_delay();      
@@ -381,7 +379,8 @@ void state_disp_blank(void) {
         prepare_delay();
         first_entry = 0;
     }
-    if (elapsed_time_in_milliseconds >= PLAYBACK_DELAY) {        prepare_delay();
+    if (elapsed_time_in_milliseconds >= PLAYBACK_DELAY) {        
+        prepare_delay();
         // For new game, just reset round length but keep LFSR advancing
         round_length = 1;
         first_entry = 1;
