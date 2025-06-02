@@ -45,36 +45,40 @@ static uint32_t lfsr_state = INITIAL_SEED;
 void display_two_digit_number(uint8_t num) {
     uint8_t tens = num / 10;
     uint8_t ones = num % 10;
-    
-    uint8_t tens_pattern = DIGIT_0;  // Default to 0
-    uint8_t ones_pattern = DIGIT_0;  // Default to 0
-    
-    // Convert digits to patterns
-    switch(tens) {
-        case 1: tens_pattern = DIGIT_1; break;
-        case 2: tens_pattern = DIGIT_2; break;
-        case 3: tens_pattern = DIGIT_3; break;
-        case 4: tens_pattern = DIGIT_4; break;
-        case 5: tens_pattern = DIGIT_5; break;
-        case 6: tens_pattern = DIGIT_6; break;
-        case 7: tens_pattern = DIGIT_7; break;
-        case 8: tens_pattern = DIGIT_8; break;
-        case 9: tens_pattern = DIGIT_9; break;
+    // For single-digit numbers (0-9), show leading space (DISP_OFF)
+    if (num < 10) {
+        update_display(DISP_OFF,
+            ones == 0 ? DIGIT_0 :
+            ones == 1 ? DIGIT_1 :
+            ones == 2 ? DIGIT_2 :
+            ones == 3 ? DIGIT_3 :
+            ones == 4 ? DIGIT_4 :
+            ones == 5 ? DIGIT_5 :
+            ones == 6 ? DIGIT_6 :
+            ones == 7 ? DIGIT_7 :
+            ones == 8 ? DIGIT_8 : DIGIT_9);
+    } else {
+        // For two-digit numbers (10-99) or overflow (>99), show both digits
+        update_display(
+            tens == 0 ? DIGIT_0 :
+            tens == 1 ? DIGIT_1 :
+            tens == 2 ? DIGIT_2 :
+            tens == 3 ? DIGIT_3 :
+            tens == 4 ? DIGIT_4 :
+            tens == 5 ? DIGIT_5 :
+            tens == 6 ? DIGIT_6 :
+            tens == 7 ? DIGIT_7 :
+            tens == 8 ? DIGIT_8 : DIGIT_9,
+            ones == 0 ? DIGIT_0 :
+            ones == 1 ? DIGIT_1 :
+            ones == 2 ? DIGIT_2 :
+            ones == 3 ? DIGIT_3 :
+            ones == 4 ? DIGIT_4 :
+            ones == 5 ? DIGIT_5 :
+            ones == 6 ? DIGIT_6 :
+            ones == 7 ? DIGIT_7 :
+            ones == 8 ? DIGIT_8 : DIGIT_9);
     }
-    
-    switch(ones) {
-        case 1: ones_pattern = DIGIT_1; break;
-        case 2: ones_pattern = DIGIT_2; break;
-        case 3: ones_pattern = DIGIT_3; break;
-        case 4: ones_pattern = DIGIT_4; break;
-        case 5: ones_pattern = DIGIT_5; break;
-        case 6: ones_pattern = DIGIT_6; break;
-        case 7: ones_pattern = DIGIT_7; break;
-        case 8: ones_pattern = DIGIT_8; break;
-        case 9: ones_pattern = DIGIT_9; break;
-    }
-    
-    update_display(tens_pattern, ones_pattern);
 }
 
 // LFSR state management functions
