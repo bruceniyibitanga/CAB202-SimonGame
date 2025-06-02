@@ -17,12 +17,6 @@
 
 // Game states and variables
 static simon_state_t state = SIMON_GENERATE;
-static uint8_t sequence_length = 4;  // Start with length 4 as per requirements
-static uint8_t sequence_index = 0;
-static uint8_t lfsr_pos = 0; // Track current position in LFSR sequence
-
-// Store sequence steps
-static uint8_t sequence[32];  // Array to store the sequence
 
 // Leaderboard
 #define MAX_NAME_LEN 20
@@ -99,15 +93,8 @@ static uint8_t get_next_step(void) {
     return lfsr_state & 0b11;
 }
 
-void add_new_sequence_step() {
-    sequence[sequence_length] = get_next_step();
-    sequence_length++;
-}
-
-// Reset LFSR to initial state
-static void reset_lfsr(void) {
-    lfsr_state = INITIAL_SEED;
-}
+// Remove unused variables and functions
+// Removed: sequence_length, sequence_index, lfsr_pos, sequence[], add_new_sequence_step(), reset_lfsr()
 
 void sort_leaderboard() {
     for (uint8_t i = 0; i < leaderboard_count; i++) {
