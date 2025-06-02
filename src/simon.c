@@ -200,6 +200,11 @@ void state_generate(void) {
     simon_step = get_next_step();
     display_step_pattern(simon_step);
     state = SIMON_PLAY_ON;
+    if(round_length == 1){
+        // This will ensure that the playback delay is set to the potentionmeter value at the start of the game
+        // Or at least at every generation/new round.
+        playback_delay = get_potentiometer_delay();
+    }
 }
 
 void state_play_on(void) {
