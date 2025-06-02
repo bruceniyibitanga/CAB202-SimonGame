@@ -178,6 +178,11 @@ void simon_init(void) {
 }
 
 void simon_task(void) {
+    // Prioritise user input even during Simon playback
+    if (state != HANDLE_INPUT && (uart_button_flag || pb_falling_edge)) {
+        state_awaiting_input();
+        return;
+    }
     switch (state) {
         case SIMON_GENERATE: state_generate(); break;
         case SIMON_PLAY_ON: state_play_on(); break;
