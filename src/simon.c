@@ -208,11 +208,11 @@ void state_generate(void) {
     // - state_success (via add_new_sequence_step to extend the sequence)
     // - state_disp_score (for starting a new 1-step sequence after failure, offset from INITIAL_SEED by lfsr_pos)    // Update playback delay from potentiometer only when starting to play the sequence
     if (sequence_index == 0) {
-        playback_delay = get_potentiometer_delay();
+    playback_delay = get_potentiometer_delay();
     }
     if (sequence_index < sequence_length) {
         display_step_pattern(sequence[sequence_index]);
-        prepare_delay(); // Reset timer as soon as tone/display ON
+        prepare_delay(); // Reset timer when starting to display/play tone
         state = SIMON_PLAY_ON;
     } else {
         sequence_index = 0;
@@ -227,13 +227,12 @@ void state_play_on(void) {
     if (elapsed_time_in_milliseconds >= (PLAYBACK_DELAY >> 1)) {
         stop_tone();
         update_display(DISP_OFF, DISP_OFF);
-        prepare_delay(); // Reset timer as soon as tone/display OFF
         state = SIMON_PLAY_OFF;
     }
 }
 
 void state_play_off(void) {
-    if (elapsed_time_in_milliseconds >= (PLAYBACK_DELAY >> 1)) {
+    if (elapsed_time_in_milliseconds >= PLAYBACK_DELAY) {
         sequence_index++;
         prepare_delay(); // Reset timer before next state
         state = SIMON_GENERATE;
@@ -284,80 +283,48 @@ void state_handle_input(void) {
         case 3: button_mask = PIN6_bm; break;
         case 4: button_mask = PIN7_bm; break;
         default: break;
-    }    // If button is still held
-    if (!pb_released) {
-        if (pb_rising_edge & button_mask) {
-            pb_released = 1;            if (elapsed_time_in_milliseconds < (PLAYBACK_DELAY >> 1)) {
-                waiting_extra_delay = 1;
-                prepare_delay(); // Reset timer for extra delay after early release
+    }
+    
+    // Check if button has been released
+    bool button_released = (pb_rising_edge & button_mask) || pb_released;
+    
+    // Determine when to stop tone/display: 50% of playback delay OR button release, whichever is longer
+    bool min_time_reached = elapsed_time_in_milliseconds >= (PLAYBACK_DELAY >> 1);
+    bool should_stop = min_time_reached && (button_released || pb_current == 0);
+    
+    // Handle UART input (instant press/release) - always wait minimum time
+    if (pb_released && waiting_extra_delay) {
+        should_stop = min_time_reached;
+    }
+    
+    if (should_stop) {
+        stop_tone();
+        update_display(DISP_OFF, DISP_OFF);
+        prepare_delay(); // Reset timer for next state
+        waiting_extra_delay = 0;
+        pb_released = 1;
+        
+        // Evaluate input and transition
+        if ((pb_current - 1) == sequence[sequence_index]) {
+            if (sequence_index < sequence_length - 1) {
+                sequence_index++;
+                state = AWAITING_INPUT;
             } else {
-                stop_tone();
-                update_display(DISP_OFF, DISP_OFF);
-                prepare_delay(); // Reset timer for next state
-                // Evaluate input and transition
-                if ((pb_current - 1) == sequence[sequence_index]) {
-                    if (sequence_index < sequence_length - 1) {
-                        sequence_index++;
-                        state = AWAITING_INPUT;
-                    } else {
-                        update_display(DISP_SUCCESS, DISP_SUCCESS);
-                        prepare_delay();
-                        sequence_index = 0;
-                        state = SUCCESS;
-                    }
-                } else {
-                    update_display(DISP_FAIL, DISP_FAIL);
-                    prepare_delay();
-                    state = FAIL;
-                }
-            }
-        }    }else {
-        // Button has been released
-        if (waiting_extra_delay) {
-            // Subtract 20ms from the delay to account for processing delays
-            if (elapsed_time_in_milliseconds >= (PLAYBACK_DELAY >> 1) - 20) {
-                stop_tone();
-                update_display(DISP_OFF, DISP_OFF);
-                prepare_delay(); // Reset timer for next state
-                waiting_extra_delay = 0;
-                // Evaluate input and transition
-                if ((pb_current - 1) == sequence[sequence_index]) {
-                    if (sequence_index < sequence_length - 1) {
-                        sequence_index++;
-                        state = AWAITING_INPUT;
-                    } else {
-                        update_display(DISP_SUCCESS, DISP_SUCCESS);
-                        prepare_delay();
-                        sequence_index = 0;
-                        state = SUCCESS;
-                    }
-                } else {
-                    update_display(DISP_FAIL, DISP_FAIL);
-                    prepare_delay();
-                    state = FAIL;
-                }
-            }
-        } else if (elapsed_time_in_milliseconds >= PLAYBACK_DELAY) {
-            stop_tone();
-            update_display(DISP_OFF, DISP_OFF);
-            prepare_delay(); // Reset timer for next state
-            // Evaluate input and transition
-            if ((pb_current - 1) == sequence[sequence_index]) {
-                if (sequence_index < sequence_length - 1) {
-                    sequence_index++;
-                    state = AWAITING_INPUT;
-                } else {
-                    update_display(DISP_SUCCESS, DISP_SUCCESS);
-                    prepare_delay();
-                    sequence_index = 0;
-                    state = SUCCESS;
-                }
-            } else {
-                update_display(DISP_FAIL, DISP_FAIL);
+                update_display(DISP_SUCCESS, DISP_SUCCESS);
                 prepare_delay();
-                state = FAIL;
+                sequence_index = 0;
+                state = SUCCESS;
             }
+        } else {
+            update_display(DISP_FAIL, DISP_FAIL);
+            prepare_delay();
+            state = FAIL;
         }
+    }
+    
+    // Update button release status for physical buttons
+    if (!pb_released && (pb_rising_edge & button_mask)) {
+        pb_released = 1;
     }
 }
 
