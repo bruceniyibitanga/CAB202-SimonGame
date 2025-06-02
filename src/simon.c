@@ -331,8 +331,14 @@ void state_handle_input(void) {
                         state = SUCCESS;
                     }
                 } else {
+                    // INCORRECT INPUT - Always clear display first
+                    stop_tone();
+                    update_display(DISP_OFF, DISP_OFF);  // Clear display BEFORE showing fail
+                    prepare_delay();  // Reset timer before showing fail
+                    
+                    // Now show failure indicator
                     update_display(DISP_FAIL, DISP_FAIL);
-                    prepare_delay();
+                    prepare_delay();  // Reset timer again for failure display
                     state = FAIL;
                 }
             }
