@@ -15,12 +15,12 @@ void adc_init()
     ADC0.CTRLC = (10 << ADC_TIMEBASE_gp) | ADC_REFSEL_VDD_gc;
     // Configure the sample duration of 64
     ADC0.CTRLE = 64;
-    // Free running, left adjust result
-    ADC0.CTRLF = (ADC_FREERUN_bm | ADC_LEFTADJ_bm);
+    // Manual conversion mode, left adjust result
+    ADC0.CTRLF = ADC_LEFTADJ_bm;
     // Select the potentiometer (R1)
     ADC0.MUXPOS = ADC_MUXPOS_AIN2_gc;
-    // Select 8-bit resolution, single-ended
-    ADC0.COMMAND = ADC_MODE_SINGLE_8BIT_gc | ADC_START_IMMEDIATE_gc;
+    // Configure for 8-bit resolution, single-ended (don't start conversion yet)
+    ADC0.COMMAND = ADC_MODE_SINGLE_8BIT_gc;
 }
 
 /*
@@ -29,6 +29,18 @@ void adc_read(void)
 */
 uint8_t adc_read()
 {
+    // Start a single conversion
+    ADC0.COMMAND |= ADC_START_IMMEDIATE_gc;
+    
+    // Wait for conversion to complete
+    while (!(ADC0.INTFLAGS & ADC_RESRDY_bm)) {
+        // Wait for result ready flag
+    }
+    
+    // Clear the interrupt flag
+    ADC0.INTFLAGS = ADC_RESRDY_bm;
+    
+    // Return the 8-bit result
     return ADC0.RESULT0;
 }
 

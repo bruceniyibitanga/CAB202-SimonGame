@@ -411,7 +411,8 @@ void state_disp_score(void) {
 void state_disp_blank(void) {
     static uint8_t first_entry = 1;
     if (first_entry) {
-        update_display(DISP_OFF, DISP_OFF);        prepare_delay(); // Reset timer when first entering DISP_BLANK state
+        update_display(DISP_OFF, DISP_OFF);        
+        prepare_delay(); // Reset timer when first entering DISP_BLANK state
         first_entry = 0;
     }
     if (elapsed_time_in_milliseconds >= PLAYBACK_DELAY) {
