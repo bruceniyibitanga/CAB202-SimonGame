@@ -335,14 +335,13 @@ void state_success(void) {
 void state_fail(void) {
     static uint8_t first_entry = 1;
     if (first_entry) {
-        prepare_delay();
         first_entry = 0;
     }
     if (elapsed_time_in_milliseconds >= PLAYBACK_DELAY) {
         update_display(DISP_OFF, DISP_OFF);
-        prepare_delay();        // On fail: advance the LFSR to the next sequence starting point
         lfsr_state = game_seed;
         // Advance LFSR multiple times to ensure a different sequence
+        // If sequnce 1,2,3,4,1,4 and playe fails at round 3, the next sequence should be 4 and then 1,4...n
         for(uint8_t i = 0; i < round_length; i++) {
             get_next_step();
         }
@@ -350,6 +349,7 @@ void state_fail(void) {
         score_to_display = (round_length > 1) ? (round_length - 1) : 0;
         round_length = 1;
         first_entry = 1;
+        prepare_delay();      
         state = DISP_SCORE;
     }
 }
