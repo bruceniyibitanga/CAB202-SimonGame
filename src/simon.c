@@ -41,6 +41,9 @@ static uint8_t leaderboard_count = 0;
 // LFSR state
 static uint32_t lfsr_state = INITIAL_SEED;
 
+// Store the LFSR state before user input for fail recovery
+static uint32_t lfsr_state_before_input = 0;
+
 // Function to display a two-digit number
 void display_two_digit_number(uint8_t num) {
     uint8_t tens = num / 10;
@@ -208,13 +211,15 @@ void state_generate(void) {
     // - state_success (via add_new_sequence_step to extend the sequence)
     // - state_disp_score (for starting a new 1-step sequence after failure, offset from INITIAL_SEED by lfsr_pos)    // Update playback delay from potentiometer only when starting to play the sequence
     if (sequence_index == 0) {
-    playback_delay = get_potentiometer_delay();
+        playback_delay = get_potentiometer_delay();
     }
     if (sequence_index < sequence_length) {
         prepare_delay(); // Reset timer when starting to display/play tone
         display_step_pattern(sequence[sequence_index]);
         state = SIMON_PLAY_ON;
     } else {
+        // Save the LFSR state before user input for fail recovery
+        lfsr_state_before_input = lfsr_state;
         sequence_index = 0;
         state = AWAITING_INPUT;
         pb_current = 0;
@@ -361,10 +366,13 @@ void state_fail(void) {
     if (elapsed_time_in_milliseconds >= PLAYBACK_DELAY) {
         update_display(DISP_OFF, DISP_OFF);
         prepare_delay();
-        if (sequence_length > 0) {
-            lfsr_pos = sequence_length - 1;
-        } else {
-            lfsr_pos = 0;
+        // Restore LFSR state to before input for correct sequence replay
+        lfsr_state = lfsr_state_before_input;
+        sequence_length = 1;
+        sequence_index = 0;
+        // Generate the next sequence step
+        for (uint8_t i = 0; i < sequence_length; i++) {
+            sequence[i] = get_next_step();
         }
         first_entry = 1; // Reset for next time
         state = DISP_SCORE;

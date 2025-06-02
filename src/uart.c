@@ -41,10 +41,10 @@ void uart_putnum(uint16_t num) {
 // ----------------------  MAIN UART LOGIC  ----------------------
 
 // Base frequencies for student number 32
-#define BASE_FREQ_A 432
-#define BASE_FREQ_CSHARP 272
-#define BASE_FREQ_EHIGH 324
-#define BASE_FREQ_ELOW 162
+#define BASE_FREQ_EHIGH 324 // S1
+#define BASE_FREQ_CSHARP 272 // S2
+#define BASE_FREQ_A 432 // S3
+#define BASE_FREQ_ELOW 162 // S4
 
 // Current frequencies
 volatile uint16_t current_freq_a = BASE_FREQ_A;

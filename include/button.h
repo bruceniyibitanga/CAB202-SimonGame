@@ -13,6 +13,9 @@ extern volatile uint8_t pb_rising_edge;
 extern volatile uint8_t pb_released;
 extern volatile uint8_t pb_current;
 
+// Global latch for button presses
+extern volatile uint8_t g_latched_button_flags;
+
 // Initialize button handling
 void buttons_init(void);
 
