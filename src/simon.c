@@ -211,8 +211,8 @@ void state_generate(void) {
     playback_delay = get_potentiometer_delay();
     }
     if (sequence_index < sequence_length) {
-        display_step_pattern(sequence[sequence_index]);
         prepare_delay(); // Reset timer when starting to display/play tone
+        display_step_pattern(sequence[sequence_index]);
         state = SIMON_PLAY_ON;
     } else {
         sequence_index = 0;
@@ -227,6 +227,7 @@ void state_play_on(void) {
     if (elapsed_time_in_milliseconds >= (PLAYBACK_DELAY >> 1)) {
         stop_tone();
         update_display(DISP_OFF, DISP_OFF);
+        prepare_delay(); // Reset timer for next state
         state = SIMON_PLAY_OFF;
     }
 }
