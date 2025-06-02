@@ -357,6 +357,10 @@ void state_success(void) {
     }
 }
 
+
+// Store the score to display after a fail
+static uint8_t score_to_display = 0;
+
 void state_fail(void) {
     static uint8_t first_entry = 1;
     if (first_entry) {
@@ -366,6 +370,8 @@ void state_fail(void) {
     if (elapsed_time_in_milliseconds >= PLAYBACK_DELAY) {
         update_display(DISP_OFF, DISP_OFF);
         prepare_delay();
+        // Store the score before resetting sequence_length
+        score_to_display = sequence_length;
         // Restore LFSR state to before input for correct sequence replay
         lfsr_state = lfsr_state_before_input;
         sequence_length = 1;
@@ -382,7 +388,6 @@ void state_fail(void) {
 void state_disp_score(void) {
     static uint8_t first_entry = 1;
     if (first_entry) {
-        uint8_t score_to_display = sequence_length;
         display_two_digit_number(score_to_display);
         prepare_delay(); // Reset timer when first entering DISP_SCORE state
         first_entry = 0;
