@@ -358,8 +358,9 @@ void state_fail(void) {
         lfsr_state = game_seed;
         get_next_step(); // Advance LFSR to next step
         game_seed = lfsr_state;
+        // Show the score for the last successfully completed round
+        score_to_display = round_length;
         round_length = 1;
-        score_to_display = round_length; // Show 1 as the score after fail
         first_entry = 1;
         state = DISP_SCORE;
     }
