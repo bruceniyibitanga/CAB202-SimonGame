@@ -233,7 +233,7 @@ void state_play_on(void) {
 }
 
 void state_play_off(void) {
-    if (elapsed_time_in_milliseconds >= PLAYBACK_DELAY) {
+    if (elapsed_time_in_milliseconds >= PLAYBACK_DELAY >> 1) {
         sequence_index++;
         prepare_delay(); // Reset timer before next state
         state = SIMON_GENERATE;
