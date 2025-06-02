@@ -340,13 +340,14 @@ void state_fail(void) {
     }
     if (elapsed_time_in_milliseconds >= PLAYBACK_DELAY) {
         update_display(DISP_OFF, DISP_OFF);
-        prepare_delay();
-        // On fail, advance LFSR once, set round length to 1, and save new game_seed
+        prepare_delay();        // On fail: advance the LFSR to the next sequence starting point
         lfsr_state = game_seed;
-        get_next_step(); // Advance LFSR to next step
+        // Advance LFSR multiple times to ensure a different sequence
+        for(uint8_t i = 0; i < round_length; i++) {
+            get_next_step();
+        }
         game_seed = lfsr_state;
-        // Show the score for the last successfully completed round
-        score_to_display = round_length;
+        score_to_display = (round_length > 1) ? (round_length - 1) : 0;
         round_length = 1;
         first_entry = 1;
         state = DISP_SCORE;
@@ -375,12 +376,9 @@ void state_disp_blank(void) {
         prepare_delay();
         first_entry = 0;
     }
-    if (elapsed_time_in_milliseconds >= PLAYBACK_DELAY) {
-        prepare_delay();
-        // Reset for new game
+    if (elapsed_time_in_milliseconds >= PLAYBACK_DELAY) {        prepare_delay();
+        // For new game, just reset round length but keep LFSR advancing
         round_length = 1;
-        lfsr_state = INITIAL_SEED;
-        game_seed = INITIAL_SEED;
         first_entry = 1;
         state = SIMON_GENERATE;
     }
