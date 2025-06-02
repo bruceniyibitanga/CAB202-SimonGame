@@ -304,7 +304,8 @@ void state_handle_input(void) {
         }    }else {
         // Button has been released
         if (waiting_extra_delay) {
-            if (elapsed_time_in_milliseconds >= (PLAYBACK_DELAY >> 1)) {
+            // Subtract 20ms from the delay to account for processing delays
+            if (elapsed_time_in_milliseconds >= (PLAYBACK_DELAY >> 1) - 20) {
                 stop_tone();
                 update_display(DISP_OFF, DISP_OFF);
                 prepare_delay(); // Reset timer for next state
