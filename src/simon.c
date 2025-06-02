@@ -178,11 +178,12 @@ void simon_init(void) {
 }
 
 void simon_task(void) {
-    // Prioritise user input even during Simon playback
-    if (state != HANDLE_INPUT && (uart_button_flag || pb_falling_edge)) {
+    // Only prioritise user input when in AWAITING_INPUT state
+    if (state == AWAITING_INPUT && (uart_button_flag || pb_falling_edge)) {
         state_awaiting_input();
         return;
     }
+    
     switch (state) {
         case SIMON_GENERATE: state_generate(); break;
         case SIMON_PLAY_ON: state_play_on(); break;
@@ -331,14 +332,8 @@ void state_handle_input(void) {
                         state = SUCCESS;
                     }
                 } else {
-                    // INCORRECT INPUT - Always clear display first
-                    stop_tone();
-                    update_display(DISP_OFF, DISP_OFF);  // Clear display BEFORE showing fail
-                    prepare_delay();  // Reset timer before showing fail
-                    
-                    // Now show failure indicator
                     update_display(DISP_FAIL, DISP_FAIL);
-                    prepare_delay();  // Reset timer again for failure display
+                    prepare_delay();
                     state = FAIL;
                 }
             }
