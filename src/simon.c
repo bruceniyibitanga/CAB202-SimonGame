@@ -41,8 +41,8 @@ static uint8_t leaderboard_count = 0;
 
 // LFSR state
 static uint32_t lfsr_state = INITIAL_SEED;
-// Save the seed at the start of each round
-static uint32_t round_seed = INITIAL_SEED;
+// Replace round_seed with game_seed for persistent sequence
+static uint32_t game_seed = INITIAL_SEED;
 // Number of steps in the current round
 static uint8_t round_length = 1;
 // For displaying score after fail
@@ -174,7 +174,7 @@ void simon_init(void) {
     state = SIMON_GENERATE;
     round_length = 1;
     lfsr_state = INITIAL_SEED;
-    round_seed = INITIAL_SEED;
+    game_seed = INITIAL_SEED;
     prepare_delay();
 }
 
@@ -206,10 +206,9 @@ static uint8_t simon_play_index = 0; // Index for Simon's playback
 static uint8_t user_input_index = 0; // Index for user input
 
 void state_generate(void) {
-    // Save the seed at the start of the round
-    round_seed = lfsr_state;
+    // Always start from game_seed for cumulative sequence
     simon_play_index = 0;
-    lfsr_state = round_seed;
+    lfsr_state = game_seed;
     prepare_delay();
     simon_step = get_next_step();
     display_step_pattern(simon_step);
@@ -229,7 +228,7 @@ void state_play_off(void) {
     if (elapsed_time_in_milliseconds >= (PLAYBACK_DELAY >> 1)) {
         simon_play_index++;
         if (simon_play_index < round_length) {
-            lfsr_state = round_seed;
+            lfsr_state = game_seed;
             for (uint8_t i = 0; i <= simon_play_index; i++) {
                 simon_step = get_next_step();
             }
@@ -238,7 +237,7 @@ void state_play_off(void) {
             state = SIMON_PLAY_ON;
         } else {
             user_input_index = 0;
-            lfsr_state = round_seed;
+            lfsr_state = game_seed;
             state = AWAITING_INPUT;
             pb_current = 0;
             pb_released = 1;
@@ -306,7 +305,7 @@ void state_handle_input(void) {
         waiting_extra_delay = 0;
         pb_released = 1;
         // Check user input against generated step
-        lfsr_state = round_seed;
+        lfsr_state = game_seed;
         for (uint8_t i = 0; i <= user_input_index; i++) {
             simon_step = get_next_step();
         }
@@ -339,9 +338,8 @@ void state_success(void) {
     if (elapsed_time_in_milliseconds >= PLAYBACK_DELAY) {
         update_display(DISP_OFF, DISP_OFF);
         prepare_delay();
-        // On success, increase round length and save new seed
+        // On success, increase round length (do not change game_seed)
         round_length++;
-        round_seed = lfsr_state;
         first_entry = 1;
         state = SIMON_GENERATE;
     }
@@ -356,10 +354,10 @@ void state_fail(void) {
     if (elapsed_time_in_milliseconds >= PLAYBACK_DELAY) {
         update_display(DISP_OFF, DISP_OFF);
         prepare_delay();
-        // On fail, advance LFSR once, set round length to 1, and save new seed
-        lfsr_state = round_seed;
+        // On fail, advance LFSR once, set round length to 1, and save new game_seed
+        lfsr_state = game_seed;
         get_next_step(); // Advance LFSR to next step
-        round_seed = lfsr_state;
+        game_seed = lfsr_state;
         round_length = 1;
         score_to_display = round_length; // Show 1 as the score after fail
         first_entry = 1;
@@ -394,7 +392,7 @@ void state_disp_blank(void) {
         // Reset for new game
         round_length = 1;
         lfsr_state = INITIAL_SEED;
-        round_seed = INITIAL_SEED;
+        game_seed = INITIAL_SEED;
         first_entry = 1;
         state = SIMON_GENERATE;
     }
