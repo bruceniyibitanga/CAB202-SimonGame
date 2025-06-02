@@ -32,8 +32,10 @@ void state_play_on(void);
 void state_play_off(void);
 void state_awaiting_input(void);
 void state_handle_input(void);
+void state_evaluate_input(void);
 void state_success(void);
 void state_fail(void);
 void state_disp_score(void);
+void state_disp_blank(void);
 
 #endif // SIMON_H
