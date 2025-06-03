@@ -70,8 +70,9 @@ void play_tone(uint8_t tone)
         case 2: freq = current_freq_a; break;
         case 3: freq = current_freq_elow; break;
         default: return;
-    }    // if (freq < 40) freq = 40;
-    // if (freq > 20000) freq = 20000;
+    }   
+    if (freq < 40) freq = 40;
+    if (freq > 20000) freq = 20000;
     uint32_t period = F_CPU / freq;
     
     // Use buffered registers for smooth updates
