@@ -157,6 +157,8 @@ static void display_step_pattern(uint8_t step) {
 
 // Add a waiting_extra_delay flag
 static bool waiting_extra_delay = 0;
+// Add a flag to track if UART input is being processed
+static bool uart_input_active = 0;
 
 void simon_init(void) {
     state = SIMON_GENERATE;
@@ -241,41 +243,46 @@ void state_play_off(void) {
 void state_awaiting_input(void) {
     // UART input: simulate instant press and release
     if (uart_button_flag) {
-        // Disable interrupts briefly to prevent race conditions
-        cli();
         uint8_t button = uart_button_flag;
         uart_button_flag = 0;  // Clear flag immediately
-        sei();
-        
         pb_current = button;
         display_step_pattern(pb_current - 1);
         prepare_delay();
         pb_released = 1;
         waiting_extra_delay = 1;
+        uart_input_active = 1; // Mark UART input active
         state = HANDLE_INPUT;
     } else if (pb_falling_edge & PIN4_bm) {
         pb_current = 1;
         display_step_pattern(0);
         pb_released = 0;
         prepare_delay();
+        waiting_extra_delay = 0;
+        uart_input_active = 0;
         state = HANDLE_INPUT;
     } else if (pb_falling_edge & PIN5_bm) {
         pb_current = 2;
         display_step_pattern(1);
         pb_released = 0;
         prepare_delay();
+        waiting_extra_delay = 0;
+        uart_input_active = 0;
         state = HANDLE_INPUT;
     } else if (pb_falling_edge & PIN6_bm) {
         pb_current = 3;
         display_step_pattern(2);
         pb_released = 0;
         prepare_delay();
+        waiting_extra_delay = 0;
+        uart_input_active = 0;
         state = HANDLE_INPUT;
     } else if (pb_falling_edge & PIN7_bm) {
         pb_current = 4;
         display_step_pattern(3);
         pb_released = 0;
         prepare_delay();
+        waiting_extra_delay = 0;
+        uart_input_active = 0;
         state = HANDLE_INPUT;
     }
 }
@@ -292,16 +299,25 @@ void state_handle_input(void) {
     bool button_released = (pb_rising_edge & button_mask) || pb_released;
     uint16_t half_delay = playback_delay >> 1;  // Cache the half delay value
     bool min_time_reached = elapsed_time_in_milliseconds >= half_delay;
-    bool should_stop = min_time_reached && (button_released || pb_current == 0);
+    bool should_stop = false;
+
+    // For UART input, simulate release at 50% delay
+    if (uart_input_active && min_time_reached) {
+        pb_released = 1;
+    }
+
+    should_stop = min_time_reached && (button_released || pb_current == 0);
     if (pb_released && waiting_extra_delay) {
         should_stop = min_time_reached;
     }
+
     if (should_stop) {
         stop_tone();
         update_display(DISP_OFF, DISP_OFF);
         prepare_delay();
         waiting_extra_delay = 0;
         pb_released = 1;
+        uart_input_active = 0; // Reset UART input flag
         // Check user input against generated step
         lfsr_state = game_seed;
         for (uint8_t i = 0; i <= user_input_index; i++) {
