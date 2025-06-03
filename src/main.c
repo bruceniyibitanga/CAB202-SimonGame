@@ -36,8 +36,8 @@ int main(void) {
         extern volatile uint32_t new_seed;
         extern volatile uint8_t update_seed;
         if (update_seed) {
-            extern uint32_t game_seed;
             game_seed = new_seed;
+            update_lfsr_state(new_seed); // Update the current LFSR state
             update_seed = 0;
         }
         

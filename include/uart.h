@@ -22,3 +22,15 @@ extern void update_buzzer_frequencies(uint8_t button_pressed);
 
 extern volatile uint8_t uart_button_flag;
 
+void uart_send_str(const char* str);
+
+int uart_rx_available(void);
+
+char uart_receive(void);
+
+void uart_enable_name_entry(void);
+
+void uart_disable_name_entry(void);
+
+void uart_print_high_scores(void);
+

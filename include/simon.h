@@ -18,13 +18,16 @@ typedef enum {
     SUCCESS,           // Show success pattern
     FAIL,              // Show failure pattern
     DISP_SCORE,        // Display final score
-    DISP_BLANK         // Display blank after score before new game
+    DISP_BLANK,       // Display blank after score before new game
+    ENTER_NAME        // New state for name entry
 } simon_state_t;
 
 // Function prototypes
 void simon_init(void);
 void simon_task(void);
 void display_two_digit_number(uint8_t num);  // Add declaration
+void uart_print_high_scores(void);  // Print high scores table via UART
+void update_lfsr_state(uint32_t new_seed);  // Function to update LFSR state
 
 // External variable declarations for main.c
 extern uint32_t game_seed;
@@ -40,5 +43,6 @@ void state_success(void);
 void state_fail(void);
 void state_disp_score(void);
 void state_disp_blank(void);
+void state_enter_name(void); // Prototype for state_enter_name
 
 #endif // SIMON_H

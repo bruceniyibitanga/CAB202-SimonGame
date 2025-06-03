@@ -1,4 +1,3 @@
-
 #include <avr/interrupt.h>
 #include <stdint.h>
 #include <avr/io.h>
@@ -38,6 +37,11 @@ void uart_putnum(uint16_t num) {
     uart_puts(buf);
 }
 
+// Helper for compatibility with simon.c
+void uart_send_str(const char* str) {
+    uart_puts(str);
+}
+
 // ----------------------  MAIN UART LOGIC  ----------------------
 
 // Base frequencies for student number 32
@@ -65,6 +69,51 @@ volatile uint8_t uart_stop = 0;
 volatile uint8_t uart_reset = 0;
 volatile uint32_t new_seed = 0;
 volatile uint8_t update_seed = 0;
+
+// Name entry buffer for characters not processed by game commands
+#define NAME_ENTRY_BUFFER_SIZE 32
+volatile char name_entry_char_buffer[NAME_ENTRY_BUFFER_SIZE];
+volatile uint8_t name_entry_buffer_head = 0;
+volatile uint8_t name_entry_buffer_tail = 0;
+volatile uint8_t name_entry_mode = 0; // 1 when in name entry mode
+
+// Forward declarations for state preservation functions
+void save_uart_state(void);
+void restore_uart_state(void);
+
+// UART input helpers for simon.c
+int uart_rx_available(void) {
+    // Check if data is available in name entry buffer
+    return name_entry_buffer_head != name_entry_buffer_tail;
+}
+
+char uart_receive(void) {
+    // Non-blocking receive from name entry buffer
+    if (name_entry_buffer_head != name_entry_buffer_tail) {
+        char c = name_entry_char_buffer[name_entry_buffer_tail];
+        name_entry_buffer_tail = (name_entry_buffer_tail + 1) % NAME_ENTRY_BUFFER_SIZE;
+        return c;
+    }
+    return 0; // No data available
+}
+
+// Enable name entry mode - UART input goes to buffer instead of game commands
+void uart_enable_name_entry(void) {
+    // Save current UART state if we're in the middle of seed entry
+    save_uart_state();
+    
+    name_entry_mode = 1;
+    name_entry_buffer_head = 0;
+    name_entry_buffer_tail = 0;
+}
+
+// Disable name entry mode - UART input processes game commands normally
+void uart_disable_name_entry(void) {
+    name_entry_mode = 0;
+    
+    // Restore UART state if we were in the middle of seed entry
+    restore_uart_state();
+}
 
 // Frequency management functions
 static void increase_frequencies(void){
@@ -151,12 +200,29 @@ static uint8_t hexchar_to_int(char c){
 // UART button flag for simon_task
 volatile uint8_t uart_button_flag = 0;
 
-ISR(USART0_RXC_vect)
-{   static Serial_State SERIAL_STATE = AWAITING_COMMAND;
-    static uint8_t chars_received = 0;
-    static uint32_t seed_value = 0;
+// UART state variables (moved outside ISR for state preservation)
+static Serial_State SERIAL_STATE = AWAITING_COMMAND;
+static uint8_t chars_received = 0;
+static uint32_t seed_value = 0;
 
+// State preservation variables for when name entry interrupts seed entry
+static Serial_State saved_serial_state = AWAITING_COMMAND;
+static uint8_t saved_chars_received = 0;
+static uint32_t saved_seed_value = 0;
+
+ISR(USART0_RXC_vect)
+{
     char rx_data = USART0.RXDATAL;
+
+    // If in name entry mode, buffer the character instead of processing commands
+    if (name_entry_mode) {
+        uint8_t next_head = (name_entry_buffer_head + 1) % NAME_ENTRY_BUFFER_SIZE;
+        if (next_head != name_entry_buffer_tail) { // Buffer not full
+            name_entry_char_buffer[name_entry_buffer_head] = rx_data;
+            name_entry_buffer_head = next_head;
+        }
+        return; // Don't process as game command
+    }
 
     switch (SERIAL_STATE)
     {
@@ -208,7 +274,7 @@ ISR(USART0_RXC_vect)
         }
         // Add UART command to print high scores (e.g. 'h')
         else if (rx_data == 'h') {
-            // uart_print_high_scores();
+            uart_print_high_scores();
         }
         break;
 
@@ -241,4 +307,17 @@ ISR(USART0_RXC_vect)
         SERIAL_STATE = AWAITING_COMMAND;
         break;
     }
+}
+
+// State preservation functions for SEED entry during name entry interruption
+void save_uart_state(void) {
+    saved_serial_state = SERIAL_STATE;
+    saved_chars_received = chars_received;
+    saved_seed_value = seed_value;
+}
+
+void restore_uart_state(void) {
+    SERIAL_STATE = saved_serial_state;
+    chars_received = saved_chars_received;
+    seed_value = saved_seed_value;
 }

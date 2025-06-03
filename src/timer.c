@@ -15,6 +15,8 @@ static uint8_t count1 = 0;
 // Timing variables for general use
 volatile uint16_t elapsed_time_in_milliseconds = 0;
 volatile uint16_t playback_delay = 250; // Default playback delay in milliseconds
+// Add a timer for UART input timeouts
+volatile uint32_t uart_input_timer = 0;
 
 // ----------------------  INITIALISATION  -------------------------------
 void timer_init(void)
@@ -50,6 +52,8 @@ ISR(TCB0_INT_vect)
 {
     // Increment the elapsed time counter
     elapsed_time_in_milliseconds++;
+    // Increment the UART input timer for name entry and other UART timeouts
+    uart_input_timer++;
     // Update the frequency of the buzzer to the current_freq only if a tone is playing
     // Removed automatic frequency update from timer ISR to prevent race conditions
     // Frequency updates are now handled directly in the UART ISR and buzzer functions
