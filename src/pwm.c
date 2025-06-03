@@ -20,22 +20,20 @@
     TCA0.SINGLE.CMP0 = 0;
 
     // Enable TCA0
-    TCA0.SINGLE.CTRLA = TCA_SINGLE_ENABLE_bm;
+    // Use DIV2 clock to reduce frequency
+    TCA0.SINGLE.CTRLA = TCA_SINGLE_ENABLE_bm | TCA_SINGLE_CLKSEL_DIV2_gc;
 
- }
-
- void pwm_set_frequency(uint16_t freq_hz)
+ } void pwm_set_frequency(uint32_t freq_hz)
  {
-    // Calculating the peiod (TOP value)
-    uint32_t period = F_CPU/freq_hz;
+    // Calculating the period (TOP value)
+    // Account for DIV2 prescaler: effective clock = F_CPU/2
+    uint32_t period = (F_CPU >> 1) / freq_hz;
     TCA0.SINGLE.PER = period;
-    
-    // Default 50% duty cyle.
-    // Have the compare value as 50% the TOP value
-    TCA0.SINGLE.CMP0 = period/2;
+    TCA0.SINGLE.CMP0 = period >> 1;
  }
 
- void pwm_set_duty(uint16_t duty_percentage)
+ // TODO: I haven't needed this function yet, remove when refactoring.
+ void pwm_set_duty(uint32_t duty_percentage)
  {
     if(duty_percentage > 100) duty_percentage = 100;
     TCA0.SINGLE.CMP0 = (TCA0.SINGLE.PER * duty_percentage/100);

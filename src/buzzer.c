@@ -70,10 +70,10 @@ void play_tone(uint8_t tone)
         case 2: freq = current_freq_a; break;
         case 3: freq = current_freq_elow; break;
         default: return;
-    }   
-    if (freq < 40) freq = 40;
-    if (freq > 20000) freq = 20000;
-    uint32_t period = F_CPU / freq;
+    }    if (freq < 40) freq = 40;    if (freq > 20000) freq = 20000;
+    // In order to account for the prescaler, we need to divide the frequency by the prescaler amount
+    // TCA0 is running with a DIV2 prescaler, so we divide by 2
+    uint32_t period = (F_CPU >> 1) / freq;
     
     // Use buffered registers for smooth updates
     TCA0.SINGLE.PERBUF = period;

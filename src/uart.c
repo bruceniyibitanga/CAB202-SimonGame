@@ -170,11 +170,15 @@ static void update_buzzer_frequencies(void){
             break;
         default:
             return; // No valid button
-    }
-      // Update the frequency if it's different
+    }    // Update the frequency if it's different
     if (new_freq != current_freq && new_freq > 0) {
         current_freq = new_freq;
-        uint32_t period = F_CPU / new_freq;
+        // Account for DIV2 prescaler: effective clock = F_CPU/2
+        uint32_t period = (F_CPU/2) / new_freq;
+        
+        // Clamp period to 16-bit range since TCA0 registers are 16-bit
+        if (period > 0xFFFF) period = 0xFFFF;
+        
         TCA0.SINGLE.PERBUF = period;
         TCA0.SINGLE.CMP0BUF = period >> 1;  // 50% duty cycle
     }
