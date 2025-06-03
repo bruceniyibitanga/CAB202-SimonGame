@@ -6,6 +6,7 @@
 #include "spi.h"
 #include "uart.h"
 #include "adc.h"
+#include "buzzer.h"
 
 volatile uint8_t pb_debounced_state = 0xFF;
 static uint8_t count0 = 0;
@@ -47,7 +48,13 @@ void prepare_delay(void)
 
 ISR(TCB0_INT_vect)
 {
+    // Increment the elapsed time counter
     elapsed_time_in_milliseconds++;
+    // Update the frequency of the buzzer to the current_freq only if a tone is playing
+    extern volatile uint8_t is_playing;
+    if (is_playing && current_freq > 0) {
+        TCA0.SINGLE.PERBUF = (F_CPU / current_freq); // Update buzzer frequency
+    }
     // Clear interrupt flags
     TCB0.INTFLAGS = TCB_CAPT_bm; 
 }

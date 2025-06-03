@@ -67,8 +67,7 @@ volatile uint32_t new_seed = 0;
 volatile uint8_t update_seed = 0;
 
 // Frequency management functions
-static void increase_frequencies(void)
-{
+static void increase_frequencies(void){
     // Check if any frequency would exceed 20kHz
     if (current_freq_ehigh > 10000 || current_freq_csharp > 10000 ||
         current_freq_a > 10000 || current_freq_elow > 10000)
@@ -83,8 +82,7 @@ static void increase_frequencies(void)
     current_freq_elow = current_freq_elow << 1;
 }
 
-static void decrease_frequencies(void)
-{
+static void decrease_frequencies(void){
     // Check if any frequency would go below 20Hz
     if (current_freq_ehigh < 40 || current_freq_csharp < 40 ||
         current_freq_a < 40 || current_freq_elow < 40)
@@ -99,16 +97,42 @@ static void decrease_frequencies(void)
     current_freq_elow = current_freq_elow >> 1;
 }
 
-static void reset_frequencies(void)
-{
+static void update_buzzer_frequencies(void){
+    // Update the buzzer frequency based on the current button being played
+    extern uint8_t current_button_playing;
+    extern volatile uint16_t current_freq;
+    
+    switch(current_button_playing) {
+        case 1:
+            current_freq = current_freq_ehigh;
+            TCA0.SINGLE.PERBUF = (F_CPU / current_freq);
+            break;
+        case 2:
+            current_freq = current_freq_csharp;
+            TCA0.SINGLE.PERBUF = (F_CPU / current_freq);
+            break;
+        case 3:
+            current_freq = current_freq_a;
+            TCA0.SINGLE.PERBUF = (F_CPU / current_freq);
+            break;
+        case 4:
+            current_freq = current_freq_elow;
+            TCA0.SINGLE.PERBUF = (F_CPU / current_freq);
+            break;
+        default:
+            // No button pressed, do nothing
+            break;
+    }
+}
+
+static void reset_frequencies(void){
     current_freq_ehigh = BASE_FREQ_EHIGH;
     current_freq_csharp = BASE_FREQ_CSHARP;
     current_freq_a = BASE_FREQ_A;
     current_freq_elow = BASE_FREQ_ELOW;
 }
 
-static uint8_t hexchar_to_int(char c)
-{
+static uint8_t hexchar_to_int(char c){
     if ('0' <= c && c <= '9')
         return c - '0';
     else if ('a' <= c && c <= 'f')
@@ -142,12 +166,21 @@ ISR(USART0_RXC_vect)
         }
         else if (rx_data == '4' || rx_data == 'r') {
             uart_button_flag = 4;
-        }
-        // Frequency control
-        else if (rx_data == ',' || rx_data == 'k')
+        }        // Frequency control
+        else if (rx_data == ',' || rx_data == 'k') {
             decrease_frequencies();
-        else if (rx_data == '.' || rx_data == 'l')
+            update_buzzer_frequencies();
+            // If a tone is currently playing from buzzer.c, update it too
+            extern void update_current_tone_frequency(void);
+            update_current_tone_frequency();
+        }
+        else if (rx_data == '.' || rx_data == 'l') {
             increase_frequencies();
+            update_buzzer_frequencies();
+            // If a tone is currently playing from buzzer.c, update it too
+            extern void update_current_tone_frequency(void);
+            update_current_tone_frequency();
+        }
         // Reset and seed
         else if (rx_data == '0' || rx_data == 'p')
         {

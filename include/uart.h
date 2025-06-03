@@ -18,5 +18,7 @@ void uart_init(void);
 
 void uart_putnum(uint16_t num);
 
+extern void update_buzzer_frequencies(uint8_t button_pressed);
+
 extern volatile uint8_t uart_button_flag;
 

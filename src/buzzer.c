@@ -10,8 +10,13 @@
 #define MIN_OCTAVE -3
 
 volatile uint8_t is_playing = 0;
-static int8_t selected_tone = 0;
+static uint8_t selected_tone = 0;
+// The current frequency is defined globally to be used across modules
+volatile uint16_t current_freq = 0; 
 static int8_t octave = 0;
+
+// Define the current_button_playing variable
+uint8_t current_button_playing = 0;
 
 void increase_octave(void)
 {
@@ -72,11 +77,23 @@ void play_tone(uint8_t tone)
     TCA0.SINGLE.PERBUF = period;
     TCA0.SINGLE.CMP0BUF = period >> 1;
     selected_tone = tone;
+    current_freq = freq;
     is_playing = 1;
+    current_button_playing = tone + 1; // Track which button is playing (1-4)
+}
+
+// Function to update the currently playing tone when frequencies change
+void update_current_tone_frequency(void)
+{
+    if (is_playing) {
+        // Re-play the current tone with updated frequency
+        play_tone(selected_tone);
+    }
 }
 
 void stop_tone(void)
 {
     TCA0.SINGLE.CMP0BUF = 0;
     is_playing = 0;
+    current_button_playing = 0; // No button playing
 }
