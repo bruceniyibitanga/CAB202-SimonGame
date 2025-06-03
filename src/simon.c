@@ -251,10 +251,11 @@ void state_play_off(void) {
             }
             prepare_delay();
             display_step_pattern(simon_step);
-            state = SIMON_PLAY_ON;
+            state = SIMON_PLAY_ON;        
         } else {
             user_input_index = 0;
             lfsr_state = game_seed;
+            prepare_delay();
             state = AWAITING_INPUT;
             pb_current = 0;
             pb_released = 1;
@@ -412,6 +413,7 @@ void state_disp_score(void) {
 }
 
 void state_evaluate_input(void) {
+    prepare_delay();  // Reset timer when transitioning to AWAITING_INPUT
     state = AWAITING_INPUT;
 }
 
