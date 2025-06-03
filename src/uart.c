@@ -51,9 +51,9 @@ void uart_send_str(const char* str) {
 #define BASE_FREQ_ELOW 162 // S4
 
 // Current frequencies
-volatile uint16_t current_freq_a = BASE_FREQ_A;
-volatile uint16_t current_freq_csharp = BASE_FREQ_CSHARP;
 volatile uint16_t current_freq_ehigh = BASE_FREQ_EHIGH;
+volatile uint16_t current_freq_csharp = BASE_FREQ_CSHARP;
+volatile uint16_t current_freq_a = BASE_FREQ_A;
 volatile uint16_t current_freq_elow = BASE_FREQ_ELOW;
 
 // State tracking
@@ -171,11 +171,10 @@ static void update_buzzer_frequencies(void){
         default:
             return; // No valid button
     }
-    
-    // Update the frequency if it's different
+      // Update the frequency if it's different
     if (new_freq != current_freq && new_freq > 0) {
         current_freq = new_freq;
-        uint16_t period = F_CPU / new_freq;
+        uint32_t period = F_CPU / new_freq;
         TCA0.SINGLE.PERBUF = period;
         TCA0.SINGLE.CMP0BUF = period >> 1;  // 50% duty cycle
     }
