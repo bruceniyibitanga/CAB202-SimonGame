@@ -468,6 +468,7 @@ void state_enter_name(void) {
         else if (name_entry_len < MAX_NAME_LEN) {
             name_entry_buffer[name_entry_len++] = c;
             name_entry_buffer[name_entry_len] = '\0';
+            uart_send('\n'); // Echo newline
             uart_send(c); // Echo character back to user
             name_entry_last_input_time = uart_input_timer;
         }
