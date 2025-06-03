@@ -168,14 +168,14 @@ ISR(USART0_RXC_vect)
             uart_button_flag = 4;
         }        // Frequency control
         else if (rx_data == ',' || rx_data == 'k') {
-            decrease_frequencies();
+            increase_frequencies();
             update_buzzer_frequencies();
             // If a tone is currently playing from buzzer.c, update it too
             extern void update_current_tone_frequency(void);
             update_current_tone_frequency();
         }
         else if (rx_data == '.' || rx_data == 'l') {
-            increase_frequencies();
+            decrease_frequencies();
             update_buzzer_frequencies();
             // If a tone is currently playing from buzzer.c, update it too
             extern void update_current_tone_frequency(void);
