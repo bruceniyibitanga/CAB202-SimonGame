@@ -24,7 +24,7 @@ void timer_init(void)
     // TCB0: 1ms interrupt for millisecond timing
     // At 3.333MHz: 1ms = 3,333 cycles
 
-    // TCB0.CCMP = TCB_CNTMODE_INT_gc;
+    TCB0.CTRLB = TCB_CNTMODE_INT_gc;  // Configure TCB0 in periodic interrupt mode
     TCB0.CCMP = 3333 - 1;
     TCB0.INTCTRL = TCB_CAPT_bm;
     TCB0.CTRLA = TCB_ENABLE_bm;
@@ -51,10 +51,9 @@ ISR(TCB0_INT_vect)
     // Increment the elapsed time counter
     elapsed_time_in_milliseconds++;
     // Update the frequency of the buzzer to the current_freq only if a tone is playing
-    extern volatile uint8_t is_playing;
-    if (is_playing && current_freq > 0) {
-        TCA0.SINGLE.PERBUF = (F_CPU / current_freq); // Update buzzer frequency
-    }
+    // Removed automatic frequency update from timer ISR to prevent race conditions
+    // Frequency updates are now handled directly in the UART ISR and buzzer functions
+    
     // Clear interrupt flags
     TCB0.INTFLAGS = TCB_CAPT_bm; 
 }

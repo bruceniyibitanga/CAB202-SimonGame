@@ -74,8 +74,11 @@ void play_tone(uint8_t tone)
     if (freq < 40) freq = 40;
     if (freq > 20000) freq = 20000;
     uint16_t period = F_CPU / freq;
+    
+    // Use buffered registers for smooth updates
     TCA0.SINGLE.PERBUF = period;
-    TCA0.SINGLE.CMP0BUF = period >> 1;
+    TCA0.SINGLE.CMP0BUF = period >> 1;  // 50% duty cycle
+    
     selected_tone = tone;
     current_freq = freq;
     is_playing = 1;
@@ -93,7 +96,9 @@ void update_current_tone_frequency(void)
 
 void stop_tone(void)
 {
+    // Set compare value to 0 to turn off PWM output
     TCA0.SINGLE.CMP0BUF = 0;
     is_playing = 0;
     current_button_playing = 0; // No button playing
+    current_freq = 0; // Clear current frequency
 }

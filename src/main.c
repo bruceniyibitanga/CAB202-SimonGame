@@ -24,6 +24,23 @@ int main(void) {
     // Main game loop
     while (1) {
         update_button_states();  // Update button states before simon task
+        
+        // Handle UART reset command
+        extern volatile uint8_t uart_reset;
+        if (uart_reset) {
+            simon_init();  // Reset the game
+            uart_reset = 0;  // Clear the flag
+        }
+        
+        // Handle UART seed update
+        extern volatile uint32_t new_seed;
+        extern volatile uint8_t update_seed;
+        if (update_seed) {
+            extern uint32_t game_seed;
+            game_seed = new_seed;
+            update_seed = 0;
+        }
+        
         simon_task();
     }
 

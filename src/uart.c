@@ -102,26 +102,33 @@ static void update_buzzer_frequencies(void){
     extern uint8_t current_button_playing;
     extern volatile uint16_t current_freq;
     
+    // Only update if a tone is currently playing
+    if (current_button_playing == 0) return;
+    
+    uint16_t new_freq = 0;
     switch(current_button_playing) {
         case 1:
-            current_freq = current_freq_ehigh;
-            TCA0.SINGLE.PERBUF = (F_CPU / current_freq);
+            new_freq = current_freq_ehigh;
             break;
         case 2:
-            current_freq = current_freq_csharp;
-            TCA0.SINGLE.PERBUF = (F_CPU / current_freq);
+            new_freq = current_freq_csharp;
             break;
         case 3:
-            current_freq = current_freq_a;
-            TCA0.SINGLE.PERBUF = (F_CPU / current_freq);
+            new_freq = current_freq_a;
             break;
         case 4:
-            current_freq = current_freq_elow;
-            TCA0.SINGLE.PERBUF = (F_CPU / current_freq);
+            new_freq = current_freq_elow;
             break;
         default:
-            // No button pressed, do nothing
-            break;
+            return; // No valid button
+    }
+    
+    // Update the frequency if it's different
+    if (new_freq != current_freq && new_freq > 0) {
+        current_freq = new_freq;
+        uint16_t period = F_CPU / new_freq;
+        TCA0.SINGLE.PERBUF = period;
+        TCA0.SINGLE.CMP0BUF = period >> 1;  // 50% duty cycle
     }
 }
 

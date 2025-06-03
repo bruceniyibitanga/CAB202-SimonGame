@@ -26,6 +26,9 @@ void simon_init(void);
 void simon_task(void);
 void display_two_digit_number(uint8_t num);  // Add declaration
 
+// External variable declarations for main.c
+extern uint32_t game_seed;
+
 // State handler prototypes for simon.c state machine
 void state_generate(void);
 void state_play_on(void);

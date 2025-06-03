@@ -1,5 +1,6 @@
 #include <stdint.h>
 #include <stdbool.h>
+#include <avr/interrupt.h>
 #include "simon.h"
 #include "display.h"
 #include "buzzer.h"
@@ -36,7 +37,7 @@ static uint8_t leaderboard_count = 0;
 // LFSR state
 static uint32_t lfsr_state = INITIAL_SEED;
 // Replace round_seed with game_seed for persistent sequence
-static uint32_t game_seed = INITIAL_SEED;
+uint32_t game_seed = INITIAL_SEED;  // Make non-static so main.c can access it
 // Number of steps in the current round
 static uint8_t round_length = 1;
 // For displaying score after fail
@@ -205,7 +206,8 @@ void state_generate(void) {
 }
 
 void state_play_on(void) {
-    if (elapsed_time_in_milliseconds >= (PLAYBACK_DELAY >> 1)) {
+    uint16_t half_delay = playback_delay >> 1;  // Cache the half delay value
+    if (elapsed_time_in_milliseconds >= half_delay) {
         stop_tone();
         update_display(DISP_OFF, DISP_OFF);
         prepare_delay();
@@ -214,7 +216,8 @@ void state_play_on(void) {
 }
 
 void state_play_off(void) {
-    if (elapsed_time_in_milliseconds >= (PLAYBACK_DELAY >> 1)) {
+    uint16_t half_delay = playback_delay >> 1;  // Cache the half delay value
+    if (elapsed_time_in_milliseconds >= half_delay) {
         simon_play_index++;
         if (simon_play_index < round_length) {
             lfsr_state = game_seed;
@@ -238,12 +241,17 @@ void state_play_off(void) {
 void state_awaiting_input(void) {
     // UART input: simulate instant press and release
     if (uart_button_flag) {
-        pb_current = uart_button_flag;
+        // Disable interrupts briefly to prevent race conditions
+        cli();
+        uint8_t button = uart_button_flag;
+        uart_button_flag = 0;  // Clear flag immediately
+        sei();
+        
+        pb_current = button;
         display_step_pattern(pb_current - 1);
         prepare_delay();
         pb_released = 1;
         waiting_extra_delay = 1;
-        uart_button_flag = 0;
         state = HANDLE_INPUT;
     } else if (pb_falling_edge & PIN4_bm) {
         pb_current = 1;
@@ -282,7 +290,8 @@ void state_handle_input(void) {
         default: break;
     }
     bool button_released = (pb_rising_edge & button_mask) || pb_released;
-    bool min_time_reached = elapsed_time_in_milliseconds >= (PLAYBACK_DELAY >> 1);
+    uint16_t half_delay = playback_delay >> 1;  // Cache the half delay value
+    bool min_time_reached = elapsed_time_in_milliseconds >= half_delay;
     bool should_stop = min_time_reached && (button_released || pb_current == 0);
     if (pb_released && waiting_extra_delay) {
         should_stop = min_time_reached;
@@ -324,7 +333,7 @@ void state_success(void) {
         prepare_delay();
         first_entry = 0;
     }
-    if (elapsed_time_in_milliseconds >= PLAYBACK_DELAY) {
+    if (elapsed_time_in_milliseconds >= playback_delay) {
         update_display(DISP_OFF, DISP_OFF);
         prepare_delay();
         // On success, increase round length (do not change game_seed)
@@ -340,7 +349,7 @@ void state_fail(void) {
         prepare_delay();
         first_entry = 0;
     }
-    if (elapsed_time_in_milliseconds >= PLAYBACK_DELAY) {
+    if (elapsed_time_in_milliseconds >= playback_delay) {
         update_display(DISP_OFF, DISP_OFF);
         lfsr_state = game_seed;
         // Advance LFSR multiple times to ensure a different sequence
@@ -364,7 +373,7 @@ void state_disp_score(void) {
         prepare_delay();
         first_entry = 0;
     }
-    if (elapsed_time_in_milliseconds >= PLAYBACK_DELAY) {
+    if (elapsed_time_in_milliseconds >= playback_delay) {
         update_display(DISP_OFF, DISP_OFF);
         prepare_delay();
         first_entry = 1;
@@ -379,7 +388,7 @@ void state_disp_blank(void) {
         prepare_delay();
         first_entry = 0;
     }
-    if (elapsed_time_in_milliseconds >= PLAYBACK_DELAY) {        
+    if (elapsed_time_in_milliseconds >= playback_delay) {        
         prepare_delay();
         // For new game, just reset round length but keep LFSR advancing
         round_length = 1;
