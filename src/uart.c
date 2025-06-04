@@ -284,12 +284,7 @@ ISR(USART0_RXC_vect)
         break;
 
     case AWAITING_PAYLOAD:
-        {
-            
-        }
-        break;
-
-    case AWAITING_SEED:
+        break;    case AWAITING_SEED:
         {
             uint8_t parsed_result = hexchar_to_int(rx_data);
             if (parsed_result != 16) {
@@ -306,6 +301,8 @@ ISR(USART0_RXC_vect)
                 // Invalid hex digit, cancel seed update
                 SERIAL_STATE = AWAITING_SEED;
             }
+            // Invalid hex digits are simply ignored (no state change)
+            // Continue waiting for valid hex digits until we get 8
         }
         break;
 
