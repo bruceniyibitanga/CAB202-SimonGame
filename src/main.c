@@ -32,14 +32,14 @@ int main(void) {
             uart_reset = 0;  // Clear the flag
         }
         
-        // Handle UART seed update
-        extern volatile uint32_t new_seed;
-        extern volatile uint8_t update_seed;
-        if (update_seed) {
-            game_seed = new_seed;
-            update_lfsr_state(new_seed); // Update the current LFSR state
-            update_seed = 0;
-        }
+        // // Handle UART seed update
+        // extern volatile uint32_t new_uart_seed;
+        // extern volatile uint8_t update_seed;
+        // if (update_seed) {
+        //     game_seed = new_uart_seed;
+        //     update_lfsr_state(new_uart_seed); // Update the current LFSR state
+        //     update_seed = 0;
+        // }
         
         simon_task();
     }

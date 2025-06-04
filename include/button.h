@@ -12,6 +12,7 @@ extern volatile uint8_t pb_falling_edge;
 extern volatile uint8_t pb_rising_edge;
 extern volatile uint8_t pb_released;
 extern volatile uint8_t pb_current;
+void update_button_states(void);
 
 // Global latch for button presses
 extern volatile uint8_t g_latched_button_flags;

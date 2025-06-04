@@ -60,14 +60,15 @@ volatile uint16_t current_freq_elow = BASE_FREQ_ELOW;
 typedef enum
 {
     AWAITING_COMMAND,
-    AWAITING_PAYLOAD,
     AWAITING_SEED
 } Serial_State;
 
 volatile uint8_t uart_play = 0;
 volatile uint8_t uart_stop = 0;
 volatile uint8_t uart_reset = 0;
-volatile uint32_t new_seed = 0;
+volatile uint32_t new_uart_seed = 0;
+// Pending seed update from UART
+volatile uint32_t has_pending_uart_seed = 0;
 volatile uint8_t update_seed = 0;
 
 // Name entry buffer for characters not processed by game commands
@@ -269,24 +270,11 @@ ISR(USART0_RXC_vect)
             seed_value = 0;
             SERIAL_STATE = AWAITING_SEED;
         }
-        // Handle delay command
-        else if (rx_data == 'd')
-        {
-            chars_received = 0;
-            SERIAL_STATE = AWAITING_PAYLOAD;
-        }
         // Add UART command to print high scores (e.g. 'h')
         else if (rx_data == 'h') {
             uart_print_high_scores();
         }
         break;
-
-    case AWAITING_PAYLOAD:
-        {
-            
-        }
-        break;
-
     case AWAITING_SEED:
         {
             uint8_t parsed_result = hexchar_to_int(rx_data);
@@ -295,13 +283,14 @@ ISR(USART0_RXC_vect)
                 chars_received++;
                 
                 if (chars_received == 8) {
-                    new_seed = seed_value;
+                    new_uart_seed = seed_value;
                     update_seed = 1;
+                    has_pending_uart_seed = 1; // Indicate a new seed is ready
                     SERIAL_STATE = AWAITING_COMMAND;
                 }
-            } else {
+            } else if (parsed_result == 16 && chars_received < 8) {
                 // Invalid hex digit, cancel seed update
-                SERIAL_STATE = AWAITING_COMMAND;
+                SERIAL_STATE = AWAITING_SEED;
             }
         }
         break;

@@ -38,7 +38,7 @@ static uint8_t leaderboard_count = 0;
 // LFSR state
 static uint32_t lfsr_state = INITIAL_SEED;
 // Replace round_seed with game_seed for persistent sequence
-uint32_t game_seed = INITIAL_SEED;  // Make non-static so main.c can access it
+uint32_t game_seed = INITIAL_SEED;
 // Number of steps in the current round
 static uint8_t round_length = 1;
 // For displaying score after fail
@@ -101,7 +101,6 @@ static uint8_t get_next_step(void) {
     }    return lfsr_state & 0b11;
 }
 
-// Function to update LFSR state with new seed (called from main.c)
 void update_lfsr_state(uint32_t new_seed) {
     lfsr_state = new_seed;
 }
@@ -224,6 +223,13 @@ void state_generate(void) {
     // Always start from game_seed for cumulative sequence
     simon_play_index = 0;
     lfsr_state = game_seed;
+    if(has_pending_uart_seed){
+        game_seed = new_uart_seed;
+        update_lfsr_state(new_uart_seed);
+        has_pending_uart_seed = 0;
+        uart_puts("Flag is working correctly...");
+    }
+
     // Always update delay at the start of every round
     playback_delay = get_potentiometer_delay();
     prepare_delay();
