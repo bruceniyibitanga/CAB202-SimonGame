@@ -30,23 +30,6 @@ void buttons_init(void)
     pb_state_prev = pb_state_curr;
 }
 
-void update_button_states(void)
-{
-    // Save previous state
-    pb_state_prev = pb_state_curr;
-    // Read current state
-    pb_state_curr = pb_debounced_state;
-
-    // Calculate edges
-    pb_falling_edge = (pb_state_prev ^ pb_state_curr) & pb_state_prev;
-    pb_rising_edge = (pb_state_prev ^ pb_state_curr) & pb_state_curr;
-
-    // Update the global latch with any new falling edges
-    if (pb_falling_edge) {
-        g_latched_button_flags |= pb_falling_edge;
-    }
-}
-
 bool button_pressed(uint8_t button_mask)
 {
     return (pb_falling_edge & button_mask) != 0;
