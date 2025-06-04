@@ -198,7 +198,7 @@ static uint8_t hexchar_to_int(char c){
     else if ('a' <= c && c <= 'f')
         return 10 + c - 'a';
     else
-        return 16; // Invalid
+        return 16; // Invalid - only lowercase hex allowed per PDF requirements
 }
 
 // UART button flag for simon_task
@@ -274,9 +274,16 @@ ISR(USART0_RXC_vect)
         else if (rx_data == 'h') {
             uart_print_high_scores();
         }
-        break;
-    case AWAITING_SEED:
+        break;    case AWAITING_SEED:
         {
+            if(rx_data == '\n' || rx_data == '\r') {
+                // If we receive a newline, cancel seed entry
+                SERIAL_STATE = AWAITING_COMMAND;
+                chars_received = 0;
+                seed_value = 0;
+                return;
+            }
+            
             uint8_t parsed_result = hexchar_to_int(rx_data);
             if (parsed_result != 16) {
                 seed_value = (seed_value << 4) | parsed_result;
@@ -287,10 +294,14 @@ ISR(USART0_RXC_vect)
                     update_seed = 1;
                     has_pending_uart_seed = 1; // Indicate a new seed is ready
                     SERIAL_STATE = AWAITING_COMMAND;
+                    chars_received = 0;
+                    seed_value = 0;
                 }
-            } else if (parsed_result == 16 && chars_received < 8) {
+            } else {
                 // Invalid hex digit, cancel seed update
-                SERIAL_STATE = AWAITING_SEED;
+                SERIAL_STATE = AWAITING_COMMAND;
+                chars_received = 0;
+                seed_value = 0;
             }
         }
         break;

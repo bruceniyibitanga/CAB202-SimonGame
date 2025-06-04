@@ -5,7 +5,7 @@ extern volatile uint8_t uart_stop;
 extern volatile uint8_t uart_reset;
 extern volatile uint32_t new_uart_seed;
 // Pending seed update from UART
-volatile uint32_t has_pending_uart_seed;
+extern volatile uint32_t has_pending_uart_seed;
 extern volatile uint8_t update_seed;
 extern volatile uint8_t uart_button_flag;
 
