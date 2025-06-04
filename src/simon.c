@@ -227,7 +227,6 @@ void state_generate(void) {
         game_seed = new_uart_seed;
         update_lfsr_state(new_uart_seed);
         has_pending_uart_seed = 0;
-        uart_puts("Flag is working correctly...");
     }
 
     // Always update delay at the start of every round
