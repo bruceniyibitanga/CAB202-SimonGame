@@ -38,7 +38,8 @@ static uint8_t leaderboard_count = 0;
 // LFSR state
 static uint32_t lfsr_state = INITIAL_SEED;
 // Replace round_seed with game_seed for persistent sequence
-uint32_t game_seed = INITIAL_SEED;  // Make non-static so main.c can access it
+uint32_t game_seed = INITIAL_SEED;
+
 // Number of steps in the current round
 static uint8_t round_length = 1;
 // For displaying score after fail
@@ -222,6 +223,16 @@ void state_generate(void) {
     // Always start from game_seed for cumulative sequence
     simon_play_index = 0;
     lfsr_state = game_seed;
+    if(has_pending_uart_seed) {
+        // If there's a pending seed update from UART, apply it
+        lfsr_state = game_seed = new_uart_seed;
+        has_pending_uart_seed = 0; // Clear the flag
+    }
+
+    uart_puts("Game seed: ");
+    uart_putnum(game_seed);
+    uart_send('\n');
+
     // Always update delay at the start of every round
     playback_delay = get_potentiometer_delay();
     prepare_delay();
@@ -468,7 +479,6 @@ void state_enter_name(void) {
         else if (name_entry_len < MAX_NAME_LEN) {
             name_entry_buffer[name_entry_len++] = c;
             name_entry_buffer[name_entry_len] = '\0';
-            uart_send(c); // Echo character back to user
             name_entry_last_input_time = uart_input_timer;
         }
         // Ignore extra chars beyond 20 (no echo for ignored chars)

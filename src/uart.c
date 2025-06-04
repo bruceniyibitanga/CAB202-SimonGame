@@ -67,7 +67,9 @@ typedef enum
 volatile uint8_t uart_play = 0;
 volatile uint8_t uart_stop = 0;
 volatile uint8_t uart_reset = 0;
-volatile uint32_t new_seed = 0;
+volatile uint32_t new_uart_seed = 0;
+// Pending seed update from UART
+volatile uint32_t has_pending_uart_seed = 0;
 volatile uint8_t update_seed = 0;
 
 // Name entry buffer for characters not processed by game commands
@@ -295,13 +297,14 @@ ISR(USART0_RXC_vect)
                 chars_received++;
                 
                 if (chars_received == 8) {
-                    new_seed = seed_value;
+                    new_uart_seed = seed_value;
                     update_seed = 1;
+                    has_pending_uart_seed = 1; // Indicate a new seed is ready
                     SERIAL_STATE = AWAITING_COMMAND;
                 }
-            } else {
+            } else if (parsed_result == 16 && chars_received < 8) {
                 // Invalid hex digit, cancel seed update
-                SERIAL_STATE = AWAITING_COMMAND;
+                SERIAL_STATE = AWAITING_SEED;
             }
         }
         break;
