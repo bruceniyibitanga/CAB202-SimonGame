@@ -19,9 +19,6 @@ extern volatile uint8_t g_latched_button_flags;
 // Initialize button handling
 void buttons_init(void);
 
-// Update button states (call this regularly)
-void update_button_states(void);
-
 // Check if specific button was pressed (using falling edge)
 bool button_pressed(uint8_t button_mask);
 

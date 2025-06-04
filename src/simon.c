@@ -467,27 +467,28 @@ void state_enter_name(void) {
         name_entry_active = true;
         uart_enable_name_entry(); // Enable name entry mode
         uart_send_str("Enter name: ");
-    }    // Process one character at a time to avoid blocking the state machine
+    }
     if (uart_rx_available()) {
-        char c = uart_receive();        if (c == '\n' || c == '\r') {
-            name_entry_buffer[name_entry_len] = '\0';
-            add_player_to_leaderboard(name_entry_buffer, score_to_display);
-            uart_print_high_scores(); // Print updated high scores table
-            uart_disable_name_entry(); // Disable name entry mode
-            name_entry_active = false;
-            // Reset for new game
-            lfsr_state = game_seed;
-            round_length = 1;
-            score_to_display = 0;
-            
-            // prepare_delay(); // Reset timer for next state
-            state = SIMON_GENERATE;
-            return;
-        }        else if (name_entry_len < MAX_NAME_LEN) {
-            name_entry_buffer[name_entry_len++] = c;
-            name_entry_buffer[name_entry_len] = '\0';
-            name_entry_last_input_time = uart_input_timer;
-        }}
+        char c = uart_receive();        
+    if (c == '\n' || c == '\r') {
+        name_entry_buffer[name_entry_len] = '\0';
+        add_player_to_leaderboard(name_entry_buffer, score_to_display);
+        uart_send("\n"); // Newline after name entry
+        uart_print_high_scores(); // Print updated high scores table
+        uart_disable_name_entry(); // Disable name entry mode
+        name_entry_active = false;
+        // Reset for new game
+        lfsr_state = game_seed;
+        round_length = 1;
+        score_to_display = 0;
+        // prepare_delay(); // Reset timer for next state
+        state = SIMON_GENERATE;
+        return;
+    } else if (name_entry_len < MAX_NAME_LEN) {
+        name_entry_buffer[name_entry_len++] = c;
+        name_entry_buffer[name_entry_len] = '\0';   
+        name_entry_last_input_time = uart_input_timer;
+    }}
     uint32_t now = uart_input_timer;
     
     // Timeout: no input at all
@@ -501,7 +502,6 @@ void state_enter_name(void) {
         lfsr_state = game_seed;
         round_length = 1;
         score_to_display = 0;
-        
         // prepare_delay(); // Reset timer for next state
         state = SIMON_GENERATE;
         return;
