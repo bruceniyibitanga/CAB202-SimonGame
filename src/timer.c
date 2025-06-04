@@ -66,16 +66,7 @@ ISR(TCB0_INT_vect)
 
 // TCB1 ISR - Handles button debouncing and display multiplexing every 5ms
 ISR(TCB1_INT_vect)
-{
-    // Store previous debounced state for edge detection
-    extern volatile uint8_t pb_state_prev;
-    extern volatile uint8_t pb_state_curr;
-    extern volatile uint8_t pb_falling_edge;
-    extern volatile uint8_t pb_rising_edge;
-    
-    pb_state_prev = pb_debounced_state;
-    
-    // Button debouncing logic
+{    // Button debouncing logic
     uint8_t pb_sample = PORTA.IN;
     uint8_t pb_changed = pb_sample ^ pb_debounced_state;
     
@@ -83,13 +74,6 @@ ISR(TCB1_INT_vect)
     count1 = (count1 ^ count0) & pb_changed;
     count0 = ~count0 & pb_changed;
     pb_debounced_state ^= (count1 & count0) | (pb_changed & pb_debounced_state);
-    
-    // Update current state and calculate edges
-    pb_state_curr = pb_debounced_state;
-    
-    // Calculate edges (falling = button press, rising = button release)
-    pb_falling_edge = (pb_state_prev ^ pb_state_curr) & pb_state_prev;
-    pb_rising_edge = (pb_state_prev ^ pb_state_curr) & pb_state_curr;
     
     // Update display
     swap_display_digit();

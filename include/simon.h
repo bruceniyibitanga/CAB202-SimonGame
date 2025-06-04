@@ -28,9 +28,9 @@ void simon_task(void);
 void display_two_digit_number(uint8_t num);  // Add declaration
 void uart_print_high_scores(void);  // Print high scores table via UART
 void update_lfsr_state(uint32_t new_seed);  // Function to update LFSR state
+
+// External variable declarations for main.c
 extern uint32_t game_seed;
-extern uint32_t pending_seed;
-extern uint8_t has_pending_seed;
 
 // State handler prototypes for simon.c state machine
 void state_generate(void);
