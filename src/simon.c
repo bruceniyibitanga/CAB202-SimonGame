@@ -184,12 +184,6 @@ static void display_step_pattern(uint8_t step) {
 static bool waiting_extra_delay = 0;
 
 void simon_init(void) {
-    // Apply pending seed if available
-    if (has_pending_seed) {
-        game_seed = pending_seed;
-        has_pending_seed = 0;
-    }
-    
     state = SIMON_GENERATE;
     round_length = 1;
     lfsr_state = game_seed;  // Use game_seed instead of INITIAL_SEED
@@ -453,12 +447,6 @@ void state_disp_blank(void) {
         // Check if we should prompt for name entry (after score display and blank period)
         if (is_player_in_top_5(score_to_display)) {
             state = ENTER_NAME;        } else {
-            // Apply pending seed if available for new game
-            if (has_pending_seed) {
-                game_seed = pending_seed;
-                has_pending_seed = 0;
-            }
-            
             // For new game, reset LFSR to game_seed and start fresh
             lfsr_state = game_seed;
             round_length = 1;
@@ -487,13 +475,6 @@ void state_enter_name(void) {
             uart_print_high_scores(); // Print updated high scores table
             uart_disable_name_entry(); // Disable name entry mode
             name_entry_active = false;
-            
-            // Apply pending seed if available for new game
-            if (has_pending_seed) {
-                game_seed = pending_seed;
-                has_pending_seed = 0;
-            }
-            
             // Reset for new game
             lfsr_state = game_seed;
             round_length = 1;
@@ -516,13 +497,6 @@ void state_enter_name(void) {
         uart_print_high_scores(); // Print updated high scores table
         uart_disable_name_entry(); // Disable name entry mode
         name_entry_active = false;
-        
-        // Apply pending seed if available for new game
-        if (has_pending_seed) {
-            game_seed = pending_seed;
-            has_pending_seed = 0;
-        }
-        
         // Reset for new game
         lfsr_state = game_seed;
         round_length = 1;
@@ -538,13 +512,6 @@ void state_enter_name(void) {
         uart_print_high_scores(); // Print updated high scores table
         uart_disable_name_entry(); // Disable name entry mode
         name_entry_active = false;
-        
-        // Apply pending seed if available for new game
-        if (has_pending_seed) {
-            game_seed = pending_seed;
-            has_pending_seed = 0;
-        }
-        
         // Reset for new game
         lfsr_state = game_seed;
         round_length = 1;
