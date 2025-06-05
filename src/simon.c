@@ -186,8 +186,9 @@ static bool waiting_extra_delay = 0;
 void simon_init(void) {
     state = SIMON_GENERATE;
     round_length = 1;
-    lfsr_state = INITIAL_SEED;
-    game_seed = INITIAL_SEED;
+    // Always use the current game_seed value for LFSR state
+    // This preserves UART-provided seeds across resets
+    lfsr_state = game_seed;
     prepare_delay();
 }
 
