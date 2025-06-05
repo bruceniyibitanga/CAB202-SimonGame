@@ -73,8 +73,7 @@ ISR(TCB1_INT_vect)
     // Two-step debouncing algorithm
     count1 = (count1 ^ count0) & pb_changed;
     count0 = ~count0 & pb_changed;
-    pb_debounced_state ^= (count1 & count0) | (pb_changed & pb_debounced_state);
-    
+    pb_debounced_state ^= (count1 & count0);    
     // Update display
     swap_display_digit();
     
