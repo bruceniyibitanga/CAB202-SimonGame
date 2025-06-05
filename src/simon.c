@@ -39,6 +39,9 @@ static uint8_t leaderboard_count = 0;
 static uint32_t lfsr_state = INITIAL_SEED;
 // Replace round_seed with game_seed for persistent sequence
 uint32_t game_seed = INITIAL_SEED;
+// Track whether we have a UART-provided seed for reset logic
+static uint32_t uart_provided_seed = INITIAL_SEED;
+static bool has_uart_seed = false;
 // Number of steps in the current round
 static uint8_t round_length = 1;
 // For displaying score after fail
@@ -186,9 +189,14 @@ static bool waiting_extra_delay = 0;
 void simon_init(void) {
     state = SIMON_GENERATE;
     round_length = 1;
-    // Always use the current game_seed value for LFSR state
-    // This preserves UART-provided seeds across resets
-    lfsr_state = game_seed;
+    // Use UART seed if available, otherwise use INITIAL_SEED
+    if (has_uart_seed) {
+        lfsr_state = uart_provided_seed;
+        game_seed = uart_provided_seed;
+    } else {
+        lfsr_state = INITIAL_SEED;
+        game_seed = INITIAL_SEED;
+    }
     prepare_delay();
 }
 
@@ -223,10 +231,12 @@ static uint8_t user_input_index = 0; // Index for user input
 void state_generate(void) {
     // Always start from game_seed for cumulative sequence
     simon_play_index = 0;
-    lfsr_state = game_seed;
+    lfsr_state = game_seed;    
     if(has_pending_uart_seed){
+        uart_provided_seed = new_uart_seed;
         game_seed = new_uart_seed;
         update_lfsr_state(new_uart_seed);
+        has_uart_seed = true;
         has_pending_uart_seed = 0;
     }
 
