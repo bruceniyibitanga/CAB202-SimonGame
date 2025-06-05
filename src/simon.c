@@ -145,7 +145,7 @@ void add_player_to_leaderboard(const char* name, uint8_t score) {
 
 // Print high scores table via UART
 void uart_print_high_scores(void) {
-    // uart_send('\n'); // Ensure leaderboard starts on a new line
+    uart_send('\n'); // Ensure leaderboard starts on a new line
     for (uint8_t i = 0; i < leaderboard_count; i++) {
         // Print name followed by space
         uart_send_str(leaderboard[i].name);
