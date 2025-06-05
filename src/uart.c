@@ -208,11 +208,13 @@ volatile uint8_t uart_button_flag = 0;
 static Serial_State SERIAL_STATE = AWAITING_COMMAND;
 static uint8_t chars_received = 0;
 static uint32_t seed_value = 0;
+static uint8_t seed_invalid = 0; // Track if any invalid characters received
 
 // State preservation variables for when name entry interrupts seed entry
 static Serial_State saved_serial_state = AWAITING_COMMAND;
 static uint8_t saved_chars_received = 0;
 static uint32_t saved_seed_value = 0;
+static uint8_t saved_seed_invalid = 0;
 
 ISR(USART0_RXC_vect)
 {
@@ -263,45 +265,55 @@ ISR(USART0_RXC_vect)
         {
             reset_frequencies();
             uart_reset = 1;
-        }
-        else if (rx_data == '9' || rx_data == 'o')
+        }        else if (rx_data == '9' || rx_data == 'o')
         {
             chars_received = 0;
             seed_value = 0;
+            seed_invalid = 0;
             SERIAL_STATE = AWAITING_SEED;
         }
         // Add UART command to print high scores (e.g. 'h')
         else if (rx_data == 'h') {
             uart_print_high_scores();
         }
-        break;    case AWAITING_SEED:
+        break;   
+        
+        case AWAITING_SEED:
         {
             if(rx_data == '\n' || rx_data == '\r') {
                 // If we receive a newline, cancel seed entry
                 SERIAL_STATE = AWAITING_COMMAND;
                 chars_received = 0;
                 seed_value = 0;
+                seed_invalid = 0;
                 return;
             }
             
             uint8_t parsed_result = hexchar_to_int(rx_data);
             if (parsed_result != 16) {
+                // Valid hex character - add to seed
                 seed_value = (seed_value << 4) | parsed_result;
-                chars_received++;
-                
-                if (chars_received == 8) {
+            } else {
+                // Invalid hex character - mark seed as invalid but continue
+                seed_invalid = 1;
+                seed_value = seed_value << 4; // Still shift to maintain position
+            }
+            
+            chars_received++;
+            
+            if (chars_received == 8) {
+                // Received all 8 characters
+                if (!seed_invalid) {
+                    // All characters were valid - apply the seed
                     new_uart_seed = seed_value;
                     update_seed = 1;
-                    has_pending_uart_seed = 1; // Indicate a new seed is ready
-                    SERIAL_STATE = AWAITING_COMMAND;
-                    chars_received = 0;
-                    seed_value = 0;
+                    has_pending_uart_seed = 1;
                 }
-            } else {
-                // Invalid hex digit, cancel seed update
+                // Reset state regardless of validity
                 SERIAL_STATE = AWAITING_COMMAND;
                 chars_received = 0;
                 seed_value = 0;
+                seed_invalid = 0;
             }
         }
         break;
@@ -317,10 +329,12 @@ void save_uart_state(void) {
     saved_serial_state = SERIAL_STATE;
     saved_chars_received = chars_received;
     saved_seed_value = seed_value;
+    saved_seed_invalid = seed_invalid;
 }
 
 void restore_uart_state(void) {
     SERIAL_STATE = saved_serial_state;
     chars_received = saved_chars_received;
     seed_value = saved_seed_value;
+    seed_invalid = saved_seed_invalid;
 }
