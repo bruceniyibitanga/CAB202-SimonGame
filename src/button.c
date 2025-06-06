@@ -56,18 +56,3 @@ bool button_released(uint8_t button_mask)
 {
     return (pb_rising_edge & button_mask) != 0;
 }
-
-// extern volatile uint8_t pb_debounced_state;
-// volatile uint8_t pb_previous_state = 0xFF; // Assume all buttons are unpressed.
-// uint8_t get_button_pressed()
-// {
-    
-//     uint8_t pb_current_state = pb_debounced_state;
-//     uint8_t pb_change = pb_current_state ^ pb_previous_state;
-//     uint8_t pb_falling_edge = pb_change & ~pb_current_state;
-//     pb_previous_state = pb_current_state;
-//     return pb_falling_edge;
-// }
-
-
-// Button debouncing is now handled in timer.c ISR

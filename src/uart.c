@@ -7,7 +7,7 @@
 #include "buzzer.h"
 #include "simon.h"
 
-// ----------------------  INITIALISATION  ----------------------
+// ----------------------  INITIALISATION  ---------------------------
 
 void uart_init(void) {
 
@@ -37,7 +37,7 @@ void uart_putnum(uint16_t num) {
     uart_puts(buf);
 }
 
-// Helper for compatibility with simon.c
+// Just calls uart_puts - kept for compatibility
 void uart_send_str(const char* str) {
     uart_puts(str);
 }
@@ -78,10 +78,6 @@ volatile uint8_t name_entry_buffer_head = 0;
 volatile uint8_t name_entry_buffer_tail = 0;
 volatile uint8_t name_entry_mode = 0; // 1 when in name entry mode
 
-// Forward declarations for state preservation functions
-void save_uart_state(void);
-void restore_uart_state(void);
-
 // UART input helpers for simon.c
 int uart_rx_available(void) {
     // Check if data is available in name entry buffer
@@ -100,9 +96,6 @@ char uart_receive(void) {
 
 // Enable name entry mode - UART input goes to buffer instead of game commands
 void uart_enable_name_entry(void) {
-    // Save current UART state if we're in the middle of seed entry
-    save_uart_state();
-    
     name_entry_mode = 1;
     name_entry_buffer_head = 0;
     name_entry_buffer_tail = 0;
@@ -111,21 +104,18 @@ void uart_enable_name_entry(void) {
 // Disable name entry mode - UART input processes game commands normally
 void uart_disable_name_entry(void) {
     name_entry_mode = 0;
-    
-    // Restore UART state if we were in the middle of seed entry
-    restore_uart_state();
 }
 
 // Frequency management functions
 static void increase_frequencies(void){
-    // Check if any frequency would exceed 20kHz
+    // Don't go above 20kHz or it gets annoying
     if (current_freq_ehigh > 10000 || current_freq_csharp > 10000 ||
         current_freq_a > 10000 || current_freq_elow > 10000)
     {
         return;
     }
 
-    // Double all frequencies
+    // Double all the frequencies
     current_freq_ehigh = current_freq_ehigh << 1;
     current_freq_csharp = current_freq_csharp << 1;
     current_freq_a = current_freq_a << 1;
@@ -133,14 +123,14 @@ static void increase_frequencies(void){
 }
 
 static void decrease_frequencies(void){
-    // Check if any frequency would go below 20Hz
+    // Don't go below 20Hz or you can't hear it
     if (current_freq_ehigh < 40 || current_freq_csharp < 40 ||
         current_freq_a < 40 || current_freq_elow < 40)
     {
         return;
     }
 
-    // Halve all frequencies
+    // Cut all frequencies in half
     current_freq_ehigh = current_freq_ehigh >> 1;
     current_freq_csharp = current_freq_csharp >> 1;
     current_freq_a = current_freq_a >> 1;
@@ -148,11 +138,11 @@ static void decrease_frequencies(void){
 }
 
 static void update_buzzer_frequencies(void){
-    // Update the buzzer frequency based on the current button being played
+    // Update buzzer frequency if a button is currently being played
     extern uint8_t current_button_playing;
     extern volatile uint16_t current_freq;
     
-    // Only update if a tone is currently playing
+    // Skip if no button is playing
     if (current_button_playing == 0) return;
     
     uint16_t new_freq = 0;
@@ -177,7 +167,6 @@ static void update_buzzer_frequencies(void){
         // Account for DIV2 prescaler: effective clock = F_CPU/2
         uint32_t period = (F_CPU/2) / new_freq;
         
-        // Clamp period to 16-bit range since TCA0 registers are 16-bit
         if (period > 0xFFFF) period = 0xFFFF;
         
         TCA0.SINGLE.PERBUF = period;
@@ -204,7 +193,7 @@ static uint8_t hexchar_to_int(char c){
 // UART button flag for simon_task
 volatile uint8_t uart_button_flag = 0;
 
-// UART state variables (moved outside ISR for state preservation)
+// UART state variables
 static Serial_State SERIAL_STATE = AWAITING_COMMAND;
 static uint8_t chars_received = 0;
 static uint32_t seed_value = 0;
@@ -218,22 +207,19 @@ static uint8_t saved_seed_invalid = 0;
 
 ISR(USART0_RXC_vect)
 {
-    char rx_data = USART0.RXDATAL;
-
-    // If in name entry mode, buffer the character instead of processing commands
+    char rx_data = USART0.RXDATAL;    // When entering a name, save chars to buffer instead of processing commands
     if (name_entry_mode) {
         uint8_t next_head = (name_entry_buffer_head + 1) % NAME_ENTRY_BUFFER_SIZE;
-        if (next_head != name_entry_buffer_tail) { // Buffer not full
+        if (next_head != name_entry_buffer_tail) { // Make sure buffer isn't full
             name_entry_char_buffer[name_entry_buffer_head] = rx_data;
             name_entry_buffer_head = next_head;
         }
-        return; // Don't process as game command
+        return; // Skip the normal command processing
     }
 
     switch (SERIAL_STATE)
-    {
-    case AWAITING_COMMAND:
-        // Gameplay inputs - each key maps to the corresponding tone (0-3)
+    {    case AWAITING_COMMAND:
+        // Game buttons - numbers or qwer keys
         if (rx_data == '1' || rx_data == 'q') {
             uart_button_flag = 1;
         }

@@ -15,30 +15,25 @@ static uint8_t count1 = 0;
 // Timing variables for general use
 volatile uint16_t elapsed_time_in_milliseconds = 0;
 volatile uint16_t playback_delay = 250; // Default playback delay in milliseconds
-// Add a timer for UART input timeouts
+// Timer for UART stuff like name entry timeouts
 volatile uint32_t uart_input_timer = 0;
 
 // ----------------------  INITIALISATION  -------------------------------
 void timer_init(void)
 {
-    // Initialize TCB0 for 1ms general timing if available
-    // Used for the Simon game timing requirements
-    // TCB0: 1ms interrupt for millisecond timing
+    // Set up TCB0 for 1ms timing - used for simon game delays
     // At 3.333MHz: 1ms = 3,333 cycles
 
-    TCB0.CTRLB = TCB_CNTMODE_INT_gc;  // Configure TCB0 in periodic interrupt mode
+    TCB0.CTRLB = TCB_CNTMODE_INT_gc;  // Periodic interrupt mode
     TCB0.CCMP = 3333 - 1;
     TCB0.INTCTRL = TCB_CAPT_bm;
     TCB0.CTRLA = TCB_ENABLE_bm;
 
-    // TCB1: 5ms interrupt for button debouncing and display multiplexing
-    // At 3.333MHz: 5ms = 16,665 cycles (using 16667 for slight over-sampling)
     
-    TCB1.CTRLB = TCB_CNTMODE_INT_gc;  // Configure TCB1 in periodic interrupt mode
-    // Set interval for 5ms (-1 because counter starts at 0)
-    TCB1.CCMP = 16667 - 1;            
-    TCB1.INTCTRL = TCB_CAPT_bm;       // Enable CAPT interrupt
-    TCB1.CTRLA = TCB_ENABLE_bm;       // Enable timer
+    TCB1.CTRLB = TCB_CNTMODE_INT_gc;  // Periodic interrupt mode
+    TCB1.CCMP = 16667 - 1;            // 5ms interval
+    TCB1.INTCTRL = TCB_CAPT_bm;       // Enable interrupt
+    TCB1.CTRLA = TCB_ENABLE_bm;       // Start the timer
 }
 // ----------------------  DELAY RESET  --------------------------------
 void prepare_delay(void)
@@ -50,31 +45,28 @@ void prepare_delay(void)
 
 ISR(TCB0_INT_vect)
 {
-    // Increment the elapsed time counter
+    // Count up milliseconds for simon game timing
     elapsed_time_in_milliseconds++;
-    // Increment the UART input timer for name entry and other UART timeouts
+    // Also count for UART name entry timeouts
     uart_input_timer++;
-    // Update the frequency of the buzzer to the current_freq only if a tone is playing
-    // Removed automatic frequency update from timer ISR to prevent race conditions
-    // Frequency updates are now handled directly in the UART ISR and buzzer functions
     
-    // Clear interrupt flags
+    // Clear the interrupt flag
     TCB0.INTFLAGS = TCB_CAPT_bm; 
 }
 
 // ----------------------  PUSH BUTTON HANDLING  ----------------------
 
-// TCB1 ISR - Handles button debouncing and display multiplexing every 5ms
+// TCB1 ISR - Does button debouncing and switches display digits every 5ms
 ISR(TCB1_INT_vect)
-{    // Button debouncing logic
+{    
     uint8_t pb_sample = PORTA.IN;
     uint8_t pb_changed = pb_sample ^ pb_debounced_state;
     
-    // Two-step debouncing algorithm
     count1 = (count1 ^ count0) & pb_changed;
     count0 = ~count0 & pb_changed;
     pb_debounced_state ^= (count1 & count0);    
-    // Update display
+    
+    // Switch between left and right display digits
     swap_display_digit();
     
     // Clear interrupt flag

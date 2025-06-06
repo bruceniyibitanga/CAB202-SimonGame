@@ -10,8 +10,6 @@ extern volatile uint8_t update_seed;
 extern volatile uint8_t uart_button_flag;
 
 // Game reporting
-void report_score(uint16_t score, uint8_t is_success);
-
 void uart_puts(const char *str);
 
 void uart_send(char c);
@@ -19,8 +17,6 @@ void uart_send(char c);
 void uart_init(void);
 
 void uart_putnum(uint16_t num);
-
-extern void update_buzzer_frequencies(uint8_t button_pressed);
 
 extern volatile uint8_t uart_button_flag;
 

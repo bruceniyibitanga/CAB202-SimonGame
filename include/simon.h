@@ -14,7 +14,6 @@ typedef enum {
     SIMON_PLAY_OFF,    // Gap between patterns
     AWAITING_INPUT,    // Wait for button press
     HANDLE_INPUT,      // Process button press
-    EVALUATE_INPUT,    // Check if input matches sequence
     SUCCESS,           // Show success pattern
     FAIL,              // Show failure pattern
     DISP_SCORE,        // Display final score
@@ -38,7 +37,6 @@ void state_play_on(void);
 void state_play_off(void);
 void state_awaiting_input(void);
 void state_handle_input(void);
-void state_evaluate_input(void);
 void state_success(void);
 void state_fail(void);
 void state_disp_score(void);

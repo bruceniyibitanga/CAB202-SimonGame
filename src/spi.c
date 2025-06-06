@@ -5,30 +5,27 @@
 #include "uart.h"
 
 void spi_init(void){
-    // Route SPI to alternate pins (PC0=SCK, PC2=MOSI)
+    // Use alternate SPI pins instead of the default ones
     PORTMUX.SPIROUTEA = PORTMUX_SPI0_ALT1_gc;
     
-    // Set up SPI pins as outputs
+    // Configure SPI pins as outputs
     PORTC.DIRSET = PIN0_bm | PIN2_bm; // PC0=SCK, PC2=MOSI
-    PORTA.DIRSET = PIN1_bm;           // PA1=DISP LATCH
+    PORTA.DIRSET = PIN1_bm;           // PA1=Display latch pin
     
-    // Initialize DISP LATCH high
+    // Start with the latch pin high
     PORTA.OUTSET = PIN1_bm;
 
-    // Configure SPI:
-    // - Master mode
-    // - MSB first (default)
-    // - Mode 0 (default: clock idle low, sample on leading edge)
+    // Setup SPI in master mode
     SPI0.CTRLA = SPI_MASTER_bm;       
     
-    // Disable Slave Select since we're using our own latch
+    // We don't need slave select since we handle our own latch
     SPI0.CTRLB = SPI_SSD_bm;          
     
-    // Enable SPI interrupt
+    // Enable SPI interrupts so we can pulse the latch
     SPI0.INTCTRL = SPI_IE_bm;         
     
-    // Enable SPI
-    SPI0.CTRLA |= SPI_ENABLE_bm;      
+    // Turn on SPI
+    SPI0.CTRLA |= SPI_ENABLE_bm;
 }
 
 void spi_write(uint8_t b){
@@ -36,9 +33,9 @@ void spi_write(uint8_t b){
 }
 
 ISR(SPI0_INT_vect) {
-    //rising edge on DISP_LATCH
+    // Pulse the latch to update the display - this happens after SPI finishes
     PORTA.OUTCLR = PIN1_bm;
-    PORTA.OUTSET = PIN1_bm;  
-
+    PORTA.OUTSET = PIN1_bm; 
+    // Clear the interrupt flag
     SPI0.INTFLAGS = SPI_IF_bm;
 }

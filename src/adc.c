@@ -27,20 +27,18 @@ void adc_init()
 All results for the Anologue digital converter are stored in the Results register of ADC port.Therefore, we only have to access the to the value in register and then perform some calculations it to determine the ultimate delay.
 void adc_read(void) 
 */
+/*
+All results for the Anologue digital converter are stored in the Results register of ADC port.Therefore, we only have to access the to the value in register and then perform some calculations it to determine the ultimate delay.
+*/
 uint8_t adc_read()
 {
-    // Start a single conversion
     ADC0.COMMAND |= ADC_START_IMMEDIATE_gc;
     
-    // Wait for conversion to complete
     while (!(ADC0.INTFLAGS & ADC_RESRDY_bm)) {
-        // Wait for result ready flag
     }
     
-    // Clear the interrupt flag
     ADC0.INTFLAGS = ADC_RESRDY_bm;
     
-    // Return the 8-bit result
     return ADC0.RESULT0;
 }
 
